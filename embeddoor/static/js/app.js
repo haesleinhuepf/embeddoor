@@ -58,6 +58,8 @@ class EmbeddoorApp {
         const wcTextSelect = document.getElementById('wordcloud-text-column');
         if (wcTextSelect) {
             wcTextSelect.addEventListener('change', () => {
+                // Persist the user's selection so it survives redraws
+                try { localStorage.setItem('wordcloudTextColumn', wcTextSelect.value || ''); } catch (_) {}
                 if (document.getElementById('view-mode').value === 'wordcloud' && this.selectedIndices.length > 0) {
                     this.generateWordCloud();
                 }
@@ -554,8 +556,8 @@ class EmbeddoorApp {
     async updateDataView() {
         const viewMode = document.getElementById('view-mode').value;
         const container = document.getElementById('data-container');
-        const wcControls = document.getElementById('wordcloud-controls');
-        const wcTextSelect = document.getElementById('wordcloud-text-column');
+    const wcControls = document.getElementById('wordcloud-controls');
+    const wcTextSelect = document.getElementById('wordcloud-text-column');
 
         if (!this.dataInfo || !this.dataInfo.loaded) {
             return;
@@ -575,6 +577,9 @@ class EmbeddoorApp {
                 wcControls.style.display = 'none';
             } else if (viewMode === 'wordcloud') {
                 // Populate text column selector using dtype info (object, string, category)
+                const prevValue = wcTextSelect ? wcTextSelect.value : '';
+                let persisted = '';
+                try { persisted = localStorage.getItem('wordcloudTextColumn') || ''; } catch (_) { persisted = ''; }
                 wcTextSelect.innerHTML = '';
                 const dtypes = this.dataInfo.dtypes || {};
                 const textCols = this.dataInfo.columns.filter(col => {
@@ -585,11 +590,23 @@ class EmbeddoorApp {
                     const opt = document.createElement('option');
                     opt.value = col; opt.textContent = col; wcTextSelect.appendChild(opt);
                 });
-                // Prefer selecting a commonly named text column
-                const preferred = ['text','content','description','body','message','title','summary'];
-                for (const p of preferred) {
-                    if (textCols.includes(p)) { wcTextSelect.value = p; break; }
+                // Try to restore prior selection, then persisted one, then sensible default
+                const tryValues = [prevValue, persisted];
+                let restored = false;
+                for (const v of tryValues) {
+                    if (v && textCols.includes(v)) { wcTextSelect.value = v; restored = true; break; }
                 }
+                if (!restored) {
+                    const preferred = ['text','content','description','body','message','title','summary'];
+                    const found = preferred.find(p => textCols.includes(p));
+                    if (found) {
+                        wcTextSelect.value = found;
+                    } else if (textCols.length > 0) {
+                        wcTextSelect.value = textCols[0];
+                    }
+                }
+                // Update persisted value after potential restoration
+                try { localStorage.setItem('wordcloudTextColumn', wcTextSelect.value || ''); } catch (_) {}
                 wcControls.style.display = 'flex';
                 container.innerHTML = '<p class="placeholder">Select points with lasso on the left plot to generate a word cloud.</p>';
             }
