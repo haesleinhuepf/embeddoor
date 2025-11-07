@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embeddoor - Embedding Visualization</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Menu Bar -->
+        <nav class="menu-bar">
+            <div class="menu-item" id="file-menu">
+                <span>File</span>
+                <div class="dropdown-content">
+                    <a href="#" id="open-file">Open CSV/Parquet...</a>
+                    <a href="#" id="save-file">Save as Parquet...</a>
+                    <a href="#" id="export-csv">Export as CSV...</a>
+                </div>
+            </div>
+            <div class="menu-item" id="embedding-menu">
+                <span>Embedding</span>
+                <div class="dropdown-content">
+                    <a href="#" id="create-embedding">Create Embedding...</a>
+                </div>
+            </div>
+            <div class="menu-item" id="dimred-menu">
+                <span>Dimensionality Reduction</span>
+                <div class="dropdown-content">
+                    <a href="#" id="apply-pca">Apply PCA...</a>
+                    <a href="#" id="apply-tsne">Apply t-SNE...</a>
+                    <a href="#" id="apply-umap">Apply UMAP...</a>
+                </div>
+            </div>
+            <div class="menu-item" id="view-menu">
+                <span>View</span>
+                <div class="dropdown-content">
+                    <a href="#" id="toggle-toolbar">Toggle Toolbar</a>
+                    <a href="#" id="reset-layout">Reset Layout</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Toolbar -->
+        <div class="toolbar" id="toolbar">
+            <button class="toolbar-btn" id="btn-load" title="Load Data">
+                <div class="icon">📂</div>
+                <div class="label">Load</div>
+            </button>
+            <button class="toolbar-btn" id="btn-save" title="Save Data">
+                <div class="icon">💾</div>
+                <div class="label">Save</div>
+            </button>
+            <button class="toolbar-btn" id="btn-refresh" title="Refresh View">
+                <div class="icon">🔄</div>
+                <div class="label">Refresh</div>
+            </button>
+            <button class="toolbar-btn" id="btn-settings" title="Settings">
+                <div class="icon">⚙️</div>
+                <div class="label">Settings</div>
+            </button>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Left Panel: Plot -->
+            <div class="panel left-panel">
+                <div class="panel-header">
+                    <h2>Visualization</h2>
+                    <div class="panel-controls">
+                        <label>X: <select id="x-column"></select></label>
+                        <label>Y: <select id="y-column"></select></label>
+                        <label>Z: <select id="z-column"><option value="">None</option></select></label>
+                        <label>Hue: <select id="hue-column"><option value="">None</option></select></label>
+                        <label>Size: <select id="size-column"><option value="">None</option></select></label>
+                        <button id="update-plot">Update Plot</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div id="plot-container"></div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Data/Custom Views -->
+            <div class="panel right-panel">
+                <div class="panel-header">
+                    <h2>Data View</h2>
+                    <div class="panel-controls">
+                        <select id="view-mode">
+                            <option value="table">Table</option>
+                            <option value="images">Images</option>
+                            <option value="wordcloud">Word Cloud</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div id="data-container">
+                        <p class="placeholder">No data loaded. Use File → Open to load a CSV or Parquet file.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <span id="status-text">Ready</span>
+            <span id="data-info"></span>
+        </div>
+    </div>
+
+    <!-- Modal Dialogs -->
+    <div id="embedding-dialog" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Create Embedding</h2>
+            <form id="embedding-form">
+                <label>Source Column: <select id="embed-source-column"></select></label>
+                <label>Provider: <select id="embed-provider">
+                    <option value="dummy">Dummy (for testing)</option>
+                </select></label>
+                <label>Model: <input type="text" id="embed-model" value="default"></label>
+                <label>Target Column Name: <input type="text" id="embed-target-column" value="embedding"></label>
+                <div class="modal-buttons">
+                    <button type="submit">Create</button>
+                    <button type="button" id="embedding-dialog-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="dimred-dialog" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Apply Dimensionality Reduction</h2>
+            <form id="dimred-form">
+                <label>Source Column (Embeddings): <select id="dimred-source-column"></select></label>
+                <label>Method: <select id="dimred-method">
+                    <option value="pca">PCA</option>
+                    <option value="tsne">t-SNE</option>
+                    <option value="umap">UMAP</option>
+                </select></label>
+                <label>Number of Components: <input type="number" id="dimred-components" value="2" min="1" max="10"></label>
+                <label>Target Column Base Name: <input type="text" id="dimred-target-name" value="dimred"></label>
+                <div id="dimred-params"></div>
+                <div class="modal-buttons">
+                    <button type="submit">Apply</button>
+                    <button type="button" id="dimred-dialog-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

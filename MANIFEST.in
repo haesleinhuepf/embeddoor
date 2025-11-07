@@ -1,0 +1,15 @@
+include README.md
+include LICENSE
+include requirements.txt
+include QUICKSTART.md
+include DEVELOPMENT.md
+
+recursive-include embeddoor/static *
+recursive-include embeddoor/templates *
+recursive-include examples *.py
+recursive-include tests *.py
+
+exclude .gitignore
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * .DS_Store
