@@ -125,11 +125,44 @@ body {
 }
 
 .left-panel {
-    flex: 1;
+    flex: 1 1 auto; /* will be controlled via JS width */
+    min-width: 200px;
 }
 
 .right-panel {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 260px;
+}
+
+/* Thin draggable divider between panels */
+.panel-divider {
+    width: 6px;
+    cursor: col-resize;
+    background: linear-gradient(180deg, #e9ecef, #dfe3e6);
+    border-radius: 4px;
+    flex: 0 0 auto;
+    align-self: stretch;
+    position: relative;
+}
+
+.panel-divider::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 10px;
+    bottom: 10px;
+    width: 2px;
+    transform: translateX(-50%);
+    background: #c5ccd3;
+    border-radius: 1px;
+}
+
+.panel-divider:hover {
+    background: linear-gradient(180deg, #e2e6ea, #d5dadd);
+}
+
+.panel-divider.active {
+    background: #b6c2cd;
 }
 
 .panel-header {

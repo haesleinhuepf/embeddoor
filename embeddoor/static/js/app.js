@@ -6,6 +6,9 @@ class EmbeddoorApp {
         this.currentPlot = null;
         this.selectedIndices = [];
         this.isGeneratingWordCloud = false; // guard to prevent recursive redraws
+        this.isResizing = false;
+        this.leftPanelMin = 200;
+        this.rightPanelMin = 260;
         this.init();
     }
 
@@ -67,6 +70,87 @@ class EmbeddoorApp {
                 const modal = e.target.closest('.modal');
                 if (modal) this.hideModal(modal.id);
             });
+        });
+
+        // Divider resize events
+        this.setupResizeDivider();
+    }
+
+    setupResizeDivider() {
+        const divider = document.getElementById('panel-divider');
+        const leftPanel = document.getElementById('left-panel');
+        const rightPanel = document.getElementById('right-panel');
+        if (!divider || !leftPanel || !rightPanel) return;
+
+        const container = document.querySelector('.main-content');
+
+        // Helper to clamp desired width to bounds
+        const clampWidth = (desired) => {
+            const rect = container.getBoundingClientRect();
+            const totalWidth = rect.width;
+            const maxLeft = totalWidth - this.rightPanelMin - divider.offsetWidth;
+            let w = desired;
+            if (w < this.leftPanelMin) w = this.leftPanelMin;
+            if (w > maxLeft) w = Math.max(this.leftPanelMin, maxLeft);
+            return w;
+        };
+
+        // Initialize fixed left panel width so it won't auto-resize during plot/table renders
+        const saved = localStorage.getItem('leftPanelWidthPx');
+        let initialWidth;
+        if (saved && !Number.isNaN(parseInt(saved, 10))) {
+            initialWidth = clampWidth(parseInt(saved, 10));
+        } else {
+            const rect = container.getBoundingClientRect();
+            const totalWidth = rect.width;
+            const half = Math.round(totalWidth * 0.5);
+            initialWidth = clampWidth(half);
+        }
+        leftPanel.style.width = initialWidth + 'px';
+        leftPanel.style.flex = '0 0 auto'; // keep fixed unless user drags
+        rightPanel.style.flex = '1 1 auto';
+
+        // Keep width in bounds on window resize (no auto-resize otherwise)
+        window.addEventListener('resize', () => {
+            const current = parseInt(leftPanel.getBoundingClientRect().width, 10) || initialWidth;
+            const clamped = clampWidth(current);
+            if (clamped !== current) {
+                leftPanel.style.width = clamped + 'px';
+            }
+        });
+
+        const onMouseMove = (e) => {
+            if (!this.isResizing) return;
+            const rect = container.getBoundingClientRect();
+            let newWidth = e.clientX - rect.left; // distance from left edge
+            // Constrain
+            const totalWidth = rect.width;
+            const maxLeft = totalWidth - this.rightPanelMin - divider.offsetWidth;
+            if (newWidth < this.leftPanelMin) newWidth = this.leftPanelMin;
+            if (newWidth > maxLeft) newWidth = maxLeft;
+            leftPanel.style.width = newWidth + 'px';
+            // Allow right panel to flex remaining space
+            rightPanel.style.flex = '1 1 auto';
+        };
+
+        const onMouseUp = () => {
+            if (!this.isResizing) return;
+            this.isResizing = false;
+            divider.classList.remove('active');
+            document.body.style.userSelect = '';
+            const w = parseInt(leftPanel.getBoundingClientRect().width, 10);
+            localStorage.setItem('leftPanelWidthPx', String(w));
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
+
+        divider.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            this.isResizing = true;
+            divider.classList.add('active');
+            document.body.style.userSelect = 'none';
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
         });
     }
 
