@@ -44,10 +44,35 @@ def create_plot(
     
     # Extract index column if present
     if 'index' in df.columns:
-        indices = df['index']
+        indices = df['index'].astype(str)  # Convert to string for display
         df = df.drop(columns=['index'])
     else:
-        indices = df.index
+        indices = pd.Series(df.index.astype(str))  # Convert to string for display
+    
+    # Ensure numeric columns are actually numeric
+    numeric_cols = [x_col]
+    if y_col:
+        numeric_cols.append(y_col)
+    if z_col:
+        numeric_cols.append(z_col)
+    if size_col:
+        numeric_cols.append(size_col)
+    
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+    
+    # Drop rows with NaN in required columns after conversion
+    required_cols = [x_col]
+    if y_col:
+        required_cols.append(y_col)
+    if z_col:
+        required_cols.append(z_col)
+    
+    # Keep track of valid indices
+    valid_mask = df[required_cols].notna().all(axis=1)
+    df = df[valid_mask]
+    indices = indices[valid_mask].reset_index(drop=True)
     
     # Determine if we're doing 3D
     is_3d = plot_type == '3d' and z_col is not None
@@ -59,22 +84,23 @@ def create_plot(
         # Group by hue if specified
         if hue_col:
             for hue_value in df[hue_col].unique():
-                subset = df[df[hue_col] == hue_value]
-                subset_indices = indices[df[hue_col] == hue_value]
+                mask = df[hue_col] == hue_value
+                subset = df[mask].reset_index(drop=True)
+                subset_indices = indices[mask].reset_index(drop=True)
                 
                 # Prepare marker settings
                 marker_dict = {'size': 5}
                 if size_col:
-                    marker_dict['size'] = subset[size_col]
+                    marker_dict['size'] = subset[size_col].tolist()
                 
                 fig.add_trace(go.Scatter3d(
-                    x=subset[x_col],
-                    y=subset[y_col],
-                    z=subset[z_col],
+                    x=subset[x_col].tolist(),
+                    y=subset[y_col].tolist(),
+                    z=subset[z_col].tolist(),
                     mode='markers',
                     name=str(hue_value),
                     marker=marker_dict,
-                    text=subset_indices,
+                    text=subset_indices.tolist(),
                     hovertemplate=(
                         f'<b>Index: %{{text}}</b><br>'
                         f'{x_col}: %{{x}}<br>'
@@ -86,15 +112,15 @@ def create_plot(
         else:
             marker_dict = {'size': 5}
             if size_col:
-                marker_dict['size'] = df[size_col]
+                marker_dict['size'] = df[size_col].tolist()
             
             fig.add_trace(go.Scatter3d(
-                x=df[x_col],
-                y=df[y_col],
-                z=df[z_col],
+                x=df[x_col].tolist(),
+                y=df[y_col].tolist(),
+                z=df[z_col].tolist(),
                 mode='markers',
                 marker=marker_dict,
-                text=indices,
+                text=indices.tolist(),
                 hovertemplate=(
                     f'<b>Index: %{{text}}</b><br>'
                     f'{x_col}: %{{x}}<br>'
@@ -125,20 +151,21 @@ def create_plot(
         if hue_col:
             print("hue")
             for hue_value in df[hue_col].unique():
-                subset = df[df[hue_col] == hue_value]
-                subset_indices = indices[df[hue_col] == hue_value]
+                mask = df[hue_col] == hue_value
+                subset = df[mask].reset_index(drop=True)
+                subset_indices = indices[mask].reset_index(drop=True)
                 
                 marker_dict = {'size': 8}
                 if size_col:
-                    marker_dict['size'] = subset[size_col]
+                    marker_dict['size'] = subset[size_col].tolist()
                 
                 fig.add_trace(go.Scatter(
-                    x=subset[x_col],
-                    y=subset[y_col],
+                    x=subset[x_col].tolist(),
+                    y=subset[y_col].tolist(),
                     mode='markers',
                     name=str(hue_value),
                     marker=marker_dict,
-                    text=subset_indices,
+                    text=subset_indices.tolist(),
                     hovertemplate=(
                         f'<b>Index: %{{text}}</b><br>'
                         f'{x_col}: %{{x}}<br>'
@@ -149,17 +176,20 @@ def create_plot(
         else:
             print("no hue")
             print("data", df.head())
+            print("indices", indices.head() if hasattr(indices, 'head') else indices[:5])
+            print("x values", df[x_col].head())
+            print("y values", df[y_col].head())
 
             marker_dict = {'size': 8}
             if size_col:
-                marker_dict['size'] = df[size_col]
+                marker_dict['size'] = df[size_col].tolist()
             
             fig.add_trace(go.Scatter(
-                x=df[x_col],
-                y=df[y_col],
+                x=df[x_col].tolist(),
+                y=df[y_col].tolist(),
                 mode='markers',
                 marker=marker_dict,
-                #text=indices,
+                text=indices.tolist(),
                 hovertemplate=(
                     f'<b>Index: %{{text}}</b><br>'
                     f'{x_col}: %{{x}}<br>'
