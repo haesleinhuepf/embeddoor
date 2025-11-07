@@ -109,6 +109,7 @@ class EmbeddoorApp {
         leftPanel.style.width = initialWidth + 'px';
         leftPanel.style.flex = '0 0 auto'; // keep fixed unless user drags
         rightPanel.style.flex = '1 1 auto';
+        this.resizePlotToPanel();
 
         // Keep width in bounds on window resize (no auto-resize otherwise)
         window.addEventListener('resize', () => {
@@ -117,6 +118,7 @@ class EmbeddoorApp {
             if (clamped !== current) {
                 leftPanel.style.width = clamped + 'px';
             }
+            this.resizePlotToPanel();
         });
 
         const onMouseMove = (e) => {
@@ -131,6 +133,7 @@ class EmbeddoorApp {
             leftPanel.style.width = newWidth + 'px';
             // Allow right panel to flex remaining space
             rightPanel.style.flex = '1 1 auto';
+            this.resizePlotToPanel();
         };
 
         const onMouseUp = () => {
@@ -142,6 +145,7 @@ class EmbeddoorApp {
             localStorage.setItem('leftPanelWidthPx', String(w));
             window.removeEventListener('mousemove', onMouseMove);
             window.removeEventListener('mouseup', onMouseUp);
+            this.resizePlotToPanel();
         };
 
         divider.addEventListener('mousedown', (e) => {
@@ -152,6 +156,12 @@ class EmbeddoorApp {
             window.addEventListener('mousemove', onMouseMove);
             window.addEventListener('mouseup', onMouseUp);
         });
+
+        // Observe size changes of left panel (e.g., CSS tweaks)
+        if ('ResizeObserver' in window) {
+            this._leftPanelRO = new ResizeObserver(() => this.resizePlotToPanel());
+            this._leftPanelRO.observe(leftPanel);
+        }
     }
 
     async checkDataStatus() {
@@ -451,10 +461,11 @@ class EmbeddoorApp {
 
             if (result.plot) {
                 const plotData = JSON.parse(result.plot);
-                Plotly.newPlot('plot-container', plotData.data, plotData.layout, {
+                    Plotly.newPlot('plot-container', plotData.data, plotData.layout, {
                     responsive: true,
                     displayModeBar: true
                 });
+                    this.resizePlotToPanel();
 
                 // Setup lasso selection handler
                 const plotDiv = document.getElementById('plot-container');
@@ -476,6 +487,20 @@ class EmbeddoorApp {
         }
     }
 
+        resizePlotToPanel() {
+            const plotDiv = document.getElementById('plot-container');
+            if (!plotDiv || !plotDiv.data) return; // Plotly attaches .data when initialized
+            const panelBody = document.querySelector('#left-panel .panel-body');
+            if (!panelBody) return;
+            // Use requestAnimationFrame to avoid layout thrash on rapid drags
+            if (this._pendingPlotResize) cancelAnimationFrame(this._pendingPlotResize);
+            this._pendingPlotResize = requestAnimationFrame(() => {
+                const rect = panelBody.getBoundingClientRect();
+                const targetWidth = Math.max(100, rect.width);
+                const targetHeight = Math.max(100, rect.height);
+                Plotly.relayout(plotDiv, { width: targetWidth, height: targetHeight });
+            });
+        }
     async updateDataView() {
         const viewMode = document.getElementById('view-mode').value;
         const container = document.getElementById('data-container');
