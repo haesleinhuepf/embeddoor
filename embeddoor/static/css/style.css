@@ -262,7 +262,7 @@ body {
 }
 
 .data-table th {
-    background-color: #34495e;
+    background-color: #2779cb;
     color: white;
     font-weight: 600;
     position: sticky;
@@ -304,7 +304,7 @@ body {
 
 /* Status Bar */
 .status-bar {
-    background-color: #34495e;
+    background-color: #2779cb;
     color: white;
     padding: 8px 16px;
     display: flex;
