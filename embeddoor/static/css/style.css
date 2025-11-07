@@ -6,6 +6,11 @@
     box-sizing: border-box;
 }
 
+/* Global reset of rounded corners */
+* {
+    border-radius: 0 !important;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     background-color: #f5f5f5;
@@ -79,7 +84,6 @@ body {
     height: 100px;
     border: 2px solid #bdc3c7;
     background-color: white;
-    border-radius: 8px;
     cursor: pointer;
     display: flex;
     flex-direction: column;
@@ -111,14 +115,14 @@ body {
     display: flex;
     flex: 1;
     overflow: hidden;
-    gap: 10px;
-    padding: 10px;
+    gap: 0; /* remove inter-panel gaps */
+    padding: 0; /* remove outer padding/margins */
 }
 
 .panel {
     background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    /* Remove shadow/frame */
+    box-shadow: none;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -127,11 +131,13 @@ body {
 .left-panel {
     flex: 1 1 auto; /* will be controlled via JS width */
     min-width: 200px;
+    padding: 0; /* remove inner padding/margins */
 }
 
 .right-panel {
     flex: 1 1 auto;
     min-width: 260px;
+    padding: 0; /* remove inner padding/margins */
 }
 
 /* Thin draggable divider between panels */
@@ -139,7 +145,6 @@ body {
     width: 6px;
     cursor: col-resize;
     background: linear-gradient(180deg, #e9ecef, #dfe3e6);
-    border-radius: 4px;
     flex: 0 0 auto;
     align-self: stretch;
     position: relative;
@@ -154,7 +159,6 @@ body {
     width: 2px;
     transform: translateX(-50%);
     background: #c5ccd3;
-    border-radius: 1px;
 }
 
 .panel-divider:hover {
@@ -196,7 +200,6 @@ body {
 .panel-controls button {
     padding: 4px 8px;
     border: 1px solid #bdc3c7;
-    border-radius: 4px;
     background-color: white;
     font-size: 13px;
 }
@@ -254,7 +257,7 @@ body {
 .data-table th,
 .data-table td {
     padding: 8px;
-    border: 1px solid #ecf0f1;
+    border: 1px solid #ecf0f1; /* restore inner grid lines */
     text-align: left;
 }
 
@@ -264,6 +267,35 @@ body {
     font-weight: 600;
     position: sticky;
     top: 0;
+}
+
+/* Remove only the outside frame of any table rendered in the data panel,
+   while keeping internal cell borders visible */
+#data-container table {
+    border: none !important;
+    border-collapse: collapse;
+    width: 100%;
+}
+#data-container table th,
+#data-container table td {
+    border: 1px solid #ecf0f1;
+}
+/* Strip the outer perimeter borders */
+#data-container table tr:first-child th,
+#data-container table tr:first-child td {
+    border-top: none;
+}
+#data-container table tr td:first-child,
+#data-container table tr th:first-child {
+    border-left: none;
+}
+#data-container table tr td:last-child,
+#data-container table tr th:last-child {
+    border-right: none;
+}
+#data-container table tr:last-child td,
+#data-container table tr:last-child th {
+    border-bottom: none;
 }
 
 .data-table tr:hover {
@@ -296,7 +328,6 @@ body {
     background-color: white;
     margin: 10% auto;
     padding: 24px;
-    border-radius: 8px;
     width: 500px;
     max-width: 90%;
     box-shadow: 0 4px 16px rgba(0,0,0,0.3);
@@ -333,7 +364,6 @@ body {
     padding: 8px;
     margin-top: 4px;
     border: 1px solid #bdc3c7;
-    border-radius: 4px;
     font-size: 14px;
 }
 
@@ -347,7 +377,6 @@ body {
 .modal-buttons button {
     padding: 10px 20px;
     border: none;
-    border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;

@@ -461,10 +461,38 @@ class EmbeddoorApp {
 
             if (result.plot) {
                 const plotData = JSON.parse(result.plot);
+                    // Remove Plotly default outer frame/grid lines for a frameless look
+                    if (plotData.layout) {
+                        // Common properties to neutralize framing
+                        plotData.layout.paper_bgcolor = 'white';
+                        plotData.layout.plot_bgcolor = 'white';
+                        if (plotData.layout.xaxis) {
+                            plotData.layout.xaxis.showline = false;
+                            plotData.layout.xaxis.showgrid = false;
+                            plotData.layout.xaxis.zeroline = false;
+                        }
+                        if (plotData.layout.yaxis) {
+                            plotData.layout.yaxis.showline = false;
+                            plotData.layout.yaxis.showgrid = false;
+                            plotData.layout.yaxis.zeroline = false;
+                        }
+                        if (plotData.layout.scene) {
+                            // 3D plots
+                            const axes = ['xaxis','yaxis','zaxis'];
+                            axes.forEach(ax => {
+                                if (plotData.layout.scene[ax]) {
+                                    plotData.layout.scene[ax].showline = false;
+                                    plotData.layout.scene[ax].showgrid = false;
+                                    plotData.layout.scene[ax].zeroline = false;
+                                }
+                            });
+                            plotData.layout.scene.bgcolor = 'white';
+                        }
+                    }
                     Plotly.newPlot('plot-container', plotData.data, plotData.layout, {
-                    responsive: true,
-                    displayModeBar: true
-                });
+                        responsive: true,
+                        displayModeBar: true
+                    });
                     this.resizePlotToPanel();
 
                 // Setup lasso selection handler
