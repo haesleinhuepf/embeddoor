@@ -3,7 +3,14 @@
 import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Iterable
+from io import BytesIO
+
+try:
+    from wordcloud import WordCloud, STOPWORDS
+except ImportError:  # Graceful fallback if dependency missing
+    WordCloud = None
+    STOPWORDS = set()
 
 
 def create_plot(
@@ -248,3 +255,52 @@ def create_table_html(data: List[Dict], max_rows: int = 1000) -> str:
         df = df.head(max_rows)
     
     return df.to_html(classes='data-table', index=True, border=0)
+
+
+def create_wordcloud_image(
+    texts: Iterable[str],
+    width: int = 600,
+    height: int = 400,
+    background_color: str = 'white',
+    stopwords: Optional[Iterable[str]] = None,
+    colormap: str = 'viridis'
+) -> bytes:
+    """Generate a word cloud PNG image from an iterable of text strings.
+
+    Args:
+        texts: Iterable of text entries to concatenate.
+        width: Output image width in pixels.
+        height: Output image height in pixels.
+        background_color: Background color of the word cloud.
+        stopwords: Optional iterable of stop words to exclude.
+        colormap: Matplotlib colormap name for word coloring.
+
+    Returns:
+        Raw PNG bytes.
+    """
+    if WordCloud is None:
+        raise RuntimeError("wordcloud package not installed. Please install 'wordcloud'.")
+
+    # Concatenate all texts; filter non-string safely
+    joined_text = " ".join([t for t in texts if isinstance(t, str)])
+    if not joined_text.strip():
+        joined_text = "(no text)"
+
+    wc_stopwords = set(STOPWORDS)
+    if stopwords:
+        wc_stopwords.update([s.lower() for s in stopwords])
+
+    wc = WordCloud(
+        width=width,
+        height=height,
+        background_color=background_color,
+        stopwords=wc_stopwords,
+        colormap=colormap,
+    )
+    wc.generate(joined_text)
+
+    image = wc.to_image()
+    buf = BytesIO()
+    image.save(buf, format='PNG')
+    buf.seek(0)
+    return buf.read()

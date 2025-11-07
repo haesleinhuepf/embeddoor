@@ -5,6 +5,7 @@ class EmbeddoorApp {
         this.dataInfo = null;
         this.currentPlot = null;
         this.selectedIndices = [];
+        this.isGeneratingWordCloud = false; // guard to prevent recursive redraws
         this.init();
     }
 
@@ -47,6 +48,18 @@ class EmbeddoorApp {
         
         // View mode
         document.getElementById('view-mode').addEventListener('change', () => this.updateDataView());
+        const wcGenerateBtn = document.getElementById('wordcloud-generate');
+        if (wcGenerateBtn) {
+            wcGenerateBtn.addEventListener('click', () => this.generateWordCloud());
+        }
+        const wcTextSelect = document.getElementById('wordcloud-text-column');
+        if (wcTextSelect) {
+            wcTextSelect.addEventListener('change', () => {
+                if (document.getElementById('view-mode').value === 'wordcloud' && this.selectedIndices.length > 0) {
+                    this.generateWordCloud();
+                }
+            });
+        }
 
         // Close buttons for modals
         document.querySelectorAll('.close').forEach(btn => {
@@ -382,6 +395,8 @@ class EmbeddoorApp {
     async updateDataView() {
         const viewMode = document.getElementById('view-mode').value;
         const container = document.getElementById('data-container');
+        const wcControls = document.getElementById('wordcloud-controls');
+        const wcTextSelect = document.getElementById('wordcloud-text-column');
 
         if (!this.dataInfo || !this.dataInfo.loaded) {
             return;
@@ -395,10 +410,29 @@ class EmbeddoorApp {
                 const response = await fetch('/api/data/sample_html?n=100');
                 const html = await response.text();
                 container.innerHTML = html;
+                wcControls.style.display = 'none';
             } else if (viewMode === 'images') {
                 container.innerHTML = '<p class="placeholder">Image view not yet implemented</p>';
+                wcControls.style.display = 'none';
             } else if (viewMode === 'wordcloud') {
-                container.innerHTML = '<p class="placeholder">Word cloud view not yet implemented</p>';
+                // Populate text column selector using dtype info (object, string, category)
+                wcTextSelect.innerHTML = '';
+                const dtypes = this.dataInfo.dtypes || {};
+                const textCols = this.dataInfo.columns.filter(col => {
+                    const dt = (dtypes[col] || '').toLowerCase();
+                    return dt.includes('object') || dt.includes('string') || dt.includes('category');
+                });
+                textCols.forEach(col => {
+                    const opt = document.createElement('option');
+                    opt.value = col; opt.textContent = col; wcTextSelect.appendChild(opt);
+                });
+                // Prefer selecting a commonly named text column
+                const preferred = ['text','content','description','body','message','title','summary'];
+                for (const p of preferred) {
+                    if (textCols.includes(p)) { wcTextSelect.value = p; break; }
+                }
+                wcControls.style.display = 'flex';
+                container.innerHTML = '<p class="placeholder">Select points with lasso on the left plot to generate a word cloud.</p>';
             }
 
             this.setStatus('Ready');
@@ -414,18 +448,62 @@ class EmbeddoorApp {
             return;
         }
 
-        // Get indices of selected points
-        this.selectedIndices = eventData.points.map(p => parseInt(p.text));
+        // Get indices of selected points; keep label strings if not numeric
+        this.selectedIndices = eventData.points.map(p => {
+            const n = parseInt(p.text, 10);
+            return Number.isNaN(n) ? p.text : n;
+        });
         
         const count = this.selectedIndices.length;
         this.setStatus(`Selected ${count} points`);
 
-        // Prompt to save selection
-        if (count > 0) {
-            const columnName = prompt('Save selection as column (or cancel):', 'selection');
-            if (columnName) {
-                this.saveSelection(columnName);
+        // Persist selection to table under a fixed column name 'selection'
+        // Empty list means the column is created (or reset) with all False
+        this.saveSelection('selection');
+
+        const viewMode = document.getElementById('view-mode').value;
+        if (viewMode === 'wordcloud') {
+            this.generateWordCloud();
+        }
+    }
+
+    async generateWordCloud() {
+        const container = document.getElementById('data-container');
+        const textCol = document.getElementById('wordcloud-text-column').value || null;
+        container.innerHTML = '<p class="placeholder">Generating word cloud...</p>';
+
+        // Also keep the selection stored in the table under 'selection'
+        // If there are no selected indices, this will reset the column to all False
+        if (this.isGeneratingWordCloud) return; // prevent re-entrancy
+        this.isGeneratingWordCloud = true;
+        await this.saveSelection('selection');
+        try {
+            const response = await fetch('/api/wordcloud', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ indices: this.selectedIndices, text_column: textCol })
+            });
+            if (!response.ok) {
+                let errMsg = 'failed to generate word cloud';
+                try { const err = await response.json(); errMsg = err.error || errMsg; } catch (_) {}
+                container.innerHTML = `<p class="placeholder">Error: ${errMsg}</p>`;
+                return;
             }
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            container.innerHTML = '';
+            const img = document.createElement('img');
+            img.src = url; img.className = 'wordcloud-image';
+            img.alt = 'Word Cloud';
+            container.appendChild(img);
+            const countDisplay = this.selectedIndices.length > 0 ? this.selectedIndices.length : 'all';
+            this.setStatus(`Word cloud generated for ${countDisplay} points`);
+        } catch (e) {
+            console.error(e);
+            container.innerHTML = '<p class="placeholder">Error generating word cloud</p>';
+            this.setStatus('Error');
+        } finally {
+            this.isGeneratingWordCloud = false;
         }
     }
 

@@ -203,6 +203,14 @@ body {
     font-size: 16px;
 }
 
+/* Word Cloud */
+.wordcloud-image {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
 /* Data Table */
 .data-table {
     width: 100%;

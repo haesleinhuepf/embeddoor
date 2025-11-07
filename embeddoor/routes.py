@@ -5,8 +5,9 @@ import json
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog
+import pandas as pd
 
-from embeddoor.visualization import create_plot, create_table_html
+from embeddoor.visualization import create_plot, create_table_html, create_wordcloud_image
 from embeddoor.embeddings import get_embedding_providers, create_embeddings
 from embeddoor.dimred import get_dimred_methods, apply_dimred
 
@@ -145,7 +146,7 @@ def register_routes(app):
     def get_data_sample_html():
         """Get a sample of the current data as pre-rendered HTML table."""
         import numpy as np
-        
+
         n = request.args.get('n', default=100, type=int)
 
         # Ensure data is loaded
@@ -203,6 +204,78 @@ def register_routes(app):
         
         result = app.data_manager.add_selection_column(column_name, selected_indices)
         return jsonify(result)
+
+    @app.route('/api/wordcloud', methods=['POST'])
+    def wordcloud_route():
+        """Generate a word cloud PNG from selected indices and a text column.
+
+        Request JSON:
+            indices: list[int or str] (required) -> dataframe index labels to include
+            text_column: str (optional) -> column to use for text; if not provided, a best-effort default is chosen
+
+        Response: image/png
+        """
+        if app.data_manager.df is None:
+            return jsonify({'success': False, 'error': 'No data loaded'}), 404
+
+        payload = request.get_json(silent=True) or {}
+        indices = payload.get('indices') or []
+        text_column = payload.get('text_column')
+
+        df = app.data_manager.df
+
+        # Choose a default text column if not provided
+        if not text_column:
+            preferred = [
+                'text', 'content', 'description', 'body', 'message', 'title', 'summary'
+            ]
+            # pick first existing preferred
+            for col in preferred:
+                if col in df.columns and df[col].dtype == object:
+                    text_column = col
+                    break
+            # else first categorical/object column
+            if not text_column:
+                cat_cols = list(df.select_dtypes(include=['object', 'string', 'category']).columns)
+                text_column = cat_cols[0] if cat_cols else None
+
+        if not text_column or text_column not in df.columns:
+            return jsonify({'success': False, 'error': 'No suitable text column found'}), 400
+
+        # Select subset by index labels; indices may be strings that represent ints
+        if indices:
+            try:
+                # Normalize index types to original index type by attempting astype
+                sel_index = pd.Index(indices)
+                try:
+                    sel_index = sel_index.astype(df.index.dtype)
+                except Exception:
+                    pass
+                # Intersect with existing index to avoid KeyError
+                valid_labels = df.index.intersection(sel_index)
+                subset = df.loc[valid_labels]
+            except Exception:
+                # Fallback: if labels failed, try positional via list of ints within range
+                try:
+                    pos = [int(i) for i in indices]
+                    subset = df.iloc[[p for p in pos if 0 <= p < len(df)]]
+                except Exception:
+                    subset = df
+        else:
+            # No selection -> use entire dataframe
+            subset = df
+
+        texts = subset[text_column].astype(str).tolist()
+
+        try:
+            png_bytes = create_wordcloud_image(texts, width=800, height=500)
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+        from io import BytesIO
+        buf = BytesIO(png_bytes)
+        buf.seek(0)
+        return send_file(buf, mimetype='image/png', as_attachment=False)
     
     @app.route('/api/embeddings/providers', methods=['GET'])
     def list_embedding_providers():
