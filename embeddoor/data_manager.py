@@ -118,8 +118,11 @@ class DataManager:
         # Handle missing values
         plot_df = plot_df.dropna()
         
+        # Include the index in the data
+        plot_df_with_index = plot_df.reset_index()
+        
         return {
-            'data': plot_df.to_dict(orient='records'),
+            'data': plot_df_with_index.to_dict(orient='records'),
             'columns': columns
         }
     

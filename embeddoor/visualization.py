@@ -32,13 +32,22 @@ def create_plot(
     """
     print("vis start")
     print("data length:", len(data))
+    print("data sample:", data[:2])
     print("x_col:", x_col)
     print("y_col:", y_col)
     print("z_col:", z_col)
     print("hue_col:", hue_col)
     print("size_col:", size_col)
+    print("plot_type:", plot_type)
 
     df = pd.DataFrame(data)
+    
+    # Extract index column if present
+    if 'index' in df.columns:
+        indices = df['index']
+        df = df.drop(columns=['index'])
+    else:
+        indices = df.index
     
     # Determine if we're doing 3D
     is_3d = plot_type == '3d' and z_col is not None
@@ -51,6 +60,7 @@ def create_plot(
         if hue_col:
             for hue_value in df[hue_col].unique():
                 subset = df[df[hue_col] == hue_value]
+                subset_indices = indices[df[hue_col] == hue_value]
                 
                 # Prepare marker settings
                 marker_dict = {'size': 5}
@@ -64,7 +74,7 @@ def create_plot(
                     mode='markers',
                     name=str(hue_value),
                     marker=marker_dict,
-                    text=subset.index,
+                    text=subset_indices,
                     hovertemplate=(
                         f'<b>Index: %{{text}}</b><br>'
                         f'{x_col}: %{{x}}<br>'
@@ -84,7 +94,7 @@ def create_plot(
                 z=df[z_col],
                 mode='markers',
                 marker=marker_dict,
-                text=df.index,
+                text=indices,
                 hovertemplate=(
                     f'<b>Index: %{{text}}</b><br>'
                     f'{x_col}: %{{x}}<br>'
@@ -99,18 +109,24 @@ def create_plot(
                 xaxis_title=x_col,
                 yaxis_title=y_col,
                 zaxis_title=z_col,
+                xaxis=dict(autorange=True),
+                yaxis=dict(autorange=True),
+                zaxis=dict(autorange=True),
             ),
             height=700,
             hovermode='closest'
         )
     
     elif y_col:
+        print("2d plot")
         # 2D scatter plot
         fig = go.Figure()
         
         if hue_col:
+            print("hue")
             for hue_value in df[hue_col].unique():
                 subset = df[df[hue_col] == hue_value]
+                subset_indices = indices[df[hue_col] == hue_value]
                 
                 marker_dict = {'size': 8}
                 if size_col:
@@ -122,7 +138,7 @@ def create_plot(
                     mode='markers',
                     name=str(hue_value),
                     marker=marker_dict,
-                    text=subset.index,
+                    text=subset_indices,
                     hovertemplate=(
                         f'<b>Index: %{{text}}</b><br>'
                         f'{x_col}: %{{x}}<br>'
@@ -131,6 +147,9 @@ def create_plot(
                     )
                 ))
         else:
+            print("no hue")
+            print("data", df.head())
+
             marker_dict = {'size': 8}
             if size_col:
                 marker_dict['size'] = df[size_col]
@@ -140,7 +159,7 @@ def create_plot(
                 y=df[y_col],
                 mode='markers',
                 marker=marker_dict,
-                text=df.index,
+                #text=indices,
                 hovertemplate=(
                     f'<b>Index: %{{text}}</b><br>'
                     f'{x_col}: %{{x}}<br>'
@@ -148,10 +167,14 @@ def create_plot(
                     '<extra></extra>'
                 )
             ))
-        
+            
+
+        print("update layout")
         fig.update_layout(
             xaxis_title=x_col,
             yaxis_title=y_col,
+            xaxis=dict(autorange=True),
+            yaxis=dict(autorange=True),
             height=700,
             hovermode='closest',
             dragmode='lasso'  # Enable lasso selection
@@ -174,6 +197,8 @@ def create_plot(
             selectdirection='any'
         )
     print("vis done")
+    fig.write_html("debug_plot.html")
+
     return fig.to_json()
 
 
