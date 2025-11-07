@@ -220,6 +220,8 @@ class EmbeddoorApp {
                 this.dataInfo.loaded = true;
                 this.updateUI();
                 this.updateDataView();
+                // Draw an initial plot only once after loading new data
+                this.setDefaultPlot();
                 this.setStatus(`Loaded ${result.shape[0]} rows, ${result.shape[1]} columns`);
             } else {
                 alert('Error loading file: ' + result.error);
@@ -408,6 +410,26 @@ class EmbeddoorApp {
         this.populateColumnSelector('z-column', this.dataInfo.numeric_columns, true);
         this.populateColumnSelector('hue-column', this.dataInfo.columns, true);
         this.populateColumnSelector('size-column', this.dataInfo.numeric_columns, true);
+    }
+
+    // Set initial X/Y selections and draw a default plot (called once after file load)
+    setDefaultPlot() {
+        if (!this.dataInfo || !this.dataInfo.loaded) return;
+        const nums = this.dataInfo.numeric_columns || [];
+        const xSelect = document.getElementById('x-column');
+        const ySelect = document.getElementById('y-column');
+        if (!xSelect || !ySelect) return;
+        if (nums.length >= 2) {
+            xSelect.value = nums[0];
+            ySelect.value = nums[1];
+        } else if (nums.length === 1) {
+            xSelect.value = nums[0];
+            ySelect.value = '';
+        } else {
+            // No numeric columns; nothing to plot
+            return;
+        }
+        this.updatePlot();
     }
 
     populateColumnSelector(selectId, columns, includeNone = false) {
