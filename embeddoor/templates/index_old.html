@@ -36,7 +36,6 @@
             <div class="menu-item" id="view-menu">
                 <span>View</span>
                 <div class="dropdown-content">
-                    <a href="#" id="add-panel">Add Panel...</a>
                     <a href="#" id="toggle-toolbar">Toggle Toolbar</a>
                     <a href="#" id="reset-layout">Reset Layout</a>
                 </div>
@@ -53,10 +52,6 @@
                 <div class="icon">💾</div>
                 <div class="label">Save</div>
             </button>
-            <button class="toolbar-btn" id="btn-add-panel" title="Add Panel">
-                <div class="icon">➕</div>
-                <div class="label">Add Panel</div>
-            </button>
             <button class="toolbar-btn" id="btn-refresh" title="Refresh View">
                 <div class="icon">🔄</div>
                 <div class="label">Refresh</div>
@@ -67,9 +62,50 @@
             </button>
         </div>
 
-        <!-- Main Content Area - Floating Panels Container -->
-        <div class="main-content" id="panels-container">
-            <!-- Panels will be dynamically added here -->
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Left Panel: Plot -->
+            <div class="panel left-panel" id="left-panel">
+                <div class="panel-header">
+                    <h2>Visualization</h2>
+                    <div class="panel-controls">
+                        <label>X: <select id="x-column"></select></label>
+                        <label>Y: <select id="y-column"></select></label>
+                        <label>Z: <select id="z-column"><option value="">None</option></select></label>
+                        <label>Hue: <select id="hue-column"><option value="">None</option></select></label>
+                        <label>Size: <select id="size-column"><option value="">None</option></select></label>
+                        <button id="update-plot">Update Plot</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div id="plot-container"></div>
+                </div>
+            </div>
+            <!-- Divider -->
+            <div id="panel-divider" class="panel-divider" title="Drag to resize"></div>
+
+            <!-- Right Panel: Data/Custom Views -->
+            <div class="panel right-panel" id="right-panel">
+                <div class="panel-header">
+                    <h2>Data View</h2>
+                    <div class="panel-controls">
+                        <select id="view-mode">
+                            <option value="table">Table</option>
+                            <option value="images">Images</option>
+                            <option value="wordcloud">Word Cloud</option>
+                        </select>
+                        <div id="wordcloud-controls" style="display:none; gap:6px; align-items:center;">
+                            <label style="display:flex; align-items:center; gap:4px;">Text Column: <select id="wordcloud-text-column"></select></label>
+                            <button id="wordcloud-generate" title="Generate word cloud from current selection">Generate</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div id="data-container">
+                        <p class="placeholder">No data loaded. Use File → Open to load a CSV or Parquet file.</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Status Bar -->
@@ -116,27 +152,6 @@
                 <div class="modal-buttons">
                     <button type="submit">Apply</button>
                     <button type="button" id="dimred-dialog-cancel">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="add-panel-dialog" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Add New Panel</h2>
-            <form id="add-panel-form">
-                <label>Panel Type:
-                    <select id="new-panel-type">
-                        <option value="plot">Plot</option>
-                        <option value="table">Table</option>
-                        <option value="wordcloud">Word Cloud</option>
-                        <option value="images">Images</option>
-                    </select>
-                </label>
-                <div class="modal-buttons">
-                    <button type="submit">Add</button>
-                    <button type="button" id="add-panel-dialog-cancel">Cancel</button>
                 </div>
             </form>
         </div>

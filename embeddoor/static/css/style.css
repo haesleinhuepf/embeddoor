@@ -110,63 +110,38 @@ body {
     font-weight: 600;
 }
 
-/* Main Content */
+/* Main Content - Floating Panels Container */
 .main-content {
-    display: flex;
+    position: relative;
     flex: 1;
     overflow: hidden;
-    gap: 0; /* remove inter-panel gaps */
-    padding: 0; /* remove outer padding/margins */
+    background-color: #f5f5f5;
 }
 
-.panel {
+/* Floating Panel Styles */
+.floating-panel {
+    position: absolute;
     background-color: white;
-    /* Remove shadow/frame */
-    box-shadow: none;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-width: 300px;
+    min-height: 200px;
+    z-index: 1;
 }
 
-.left-panel {
-    flex: 1 1 auto; /* will be controlled via JS width */
-    min-width: 200px;
-    padding: 0; /* remove inner padding/margins */
+.floating-panel.active {
+    z-index: 10;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.3);
 }
 
-.right-panel {
-    flex: 1 1 auto;
-    min-width: 260px;
-    padding: 0; /* remove inner padding/margins */
+.floating-panel.minimized {
+    height: auto !important;
 }
 
-/* Thin draggable divider between panels */
-.panel-divider {
-    width: 6px;
-    cursor: col-resize;
-    background: linear-gradient(180deg, #e9ecef, #dfe3e6);
-    flex: 0 0 auto;
-    align-self: stretch;
-    position: relative;
-}
-
-.panel-divider::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 10px;
-    bottom: 10px;
-    width: 2px;
-    transform: translateX(-50%);
-    background: #c5ccd3;
-}
-
-.panel-divider:hover {
-    background: linear-gradient(180deg, #e2e6ea, #d5dadd);
-}
-
-.panel-divider.active {
-    background: #b6c2cd;
+.floating-panel.minimized .panel-body {
+    display: none;
 }
 
 .panel-header {
@@ -176,11 +151,71 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    cursor: move;
+    user-select: none;
 }
 
 .panel-header h2 {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Panel Header Controls */
+.panel-header-controls {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.panel-btn {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 16px;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.panel-btn:hover {
+    opacity: 1;
+    background-color: rgba(255,255,255,0.1);
+}
+
+/* View Type Selector in Panel Header */
+.panel-view-selector {
+    background-color: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    padding: 4px 8px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.panel-view-selector option {
+    background-color: #2779cb;
+    color: white;
+}
+
+/* Resize Handle */
+.resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+    background: linear-gradient(135deg, transparent 50%, #2779cb 50%);
+    opacity: 0.5;
+}
+
+.resize-handle:hover {
+    opacity: 1;
 }
 
 .panel-controls {

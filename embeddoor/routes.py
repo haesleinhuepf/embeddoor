@@ -7,13 +7,16 @@ import tkinter as tk
 from tkinter import filedialog
 import pandas as pd
 
-from embeddoor.visualization import create_plot, create_table_html, create_wordcloud_image
 from embeddoor.embeddings import get_embedding_providers, create_embeddings
 from embeddoor.dimred import get_dimred_methods, apply_dimred
+from embeddoor.views import register_all_views
 
 
 def register_routes(app):
     """Register all application routes."""
+    
+    # Register modular view routes
+    register_all_views(app)
     
     @app.route('/api/dialog/open-file', methods=['GET'])
     def open_file_dialog():
@@ -142,141 +145,7 @@ def register_routes(app):
         
         return jsonify(sample)
 
-    @app.route('/api/data/sample_html', methods=['GET'])
-    def get_data_sample_html():
-        """Get a sample of the current data as pre-rendered HTML table."""
-        import numpy as np
 
-        n = request.args.get('n', default=100, type=int)
-
-        # Ensure data is loaded
-        if app.data_manager.df is None:
-            return 'No data loaded', 404
-
-        # Build HTML using helper
-        sample_df = app.data_manager.df.head(n).copy()
-
-        # replace lists with strings for better display
-        for col in sample_df.select_dtypes(include=['object']).columns:
-            sample_df[col] = sample_df[col].apply(lambda x: "[...]" if isinstance(x, list) or isinstance(x, np.ndarray) else x)
-
-        html = create_table_html(sample_df.to_dict(orient='records'), max_rows=n)
-
-        # Return raw HTML (text/html)
-        return html
-    
-    @app.route('/api/plot', methods=['POST'])
-    def generate_plot():
-        """Generate a plot based on the current data."""
-        config = request.json
-        
-        x_col = config.get('x')
-        y_col = config.get('y')
-        z_col = config.get('z')
-        hue_col = config.get('hue')
-        size_col = config.get('size')
-        plot_type = config.get('type', '2d')
-        
-        if not x_col:
-            return jsonify({'error': 'X column required'}), 400
-        
-        # Get plot data
-        plot_data = app.data_manager.get_plot_data(x_col, y_col, z_col, hue_col, size_col)
-        
-        if plot_data is None:
-            return jsonify({'error': 'No data available'}), 404
-        
-        # Create plot
-        plot_json = create_plot(
-            plot_data['data'],
-            x_col, y_col, z_col, hue_col, size_col,
-            plot_type=plot_type
-        )
-        
-        return jsonify({'plot': plot_json})
-    
-    @app.route('/api/selection/save', methods=['POST'])
-    def save_selection():
-        """Save a lasso selection as a new column."""
-        data = request.json
-        column_name = data.get('column_name', 'selection')
-        selected_indices = data.get('indices', [])
-        
-        result = app.data_manager.add_selection_column(column_name, selected_indices)
-        return jsonify(result)
-
-    @app.route('/api/wordcloud', methods=['POST'])
-    def wordcloud_route():
-        """Generate a word cloud PNG from selected indices and a text column.
-
-        Request JSON:
-            indices: list[int or str] (required) -> dataframe index labels to include
-            text_column: str (optional) -> column to use for text; if not provided, a best-effort default is chosen
-
-        Response: image/png
-        """
-        if app.data_manager.df is None:
-            return jsonify({'success': False, 'error': 'No data loaded'}), 404
-
-        payload = request.get_json(silent=True) or {}
-        indices = payload.get('indices') or []
-        text_column = payload.get('text_column')
-
-        df = app.data_manager.df
-
-        # Choose a default text column if not provided
-        if not text_column:
-            preferred = [
-                'text', 'content', 'description', 'body', 'message', 'title', 'summary'
-            ]
-            # pick first existing preferred
-            for col in preferred:
-                if col in df.columns and df[col].dtype == object:
-                    text_column = col
-                    break
-            # else first categorical/object column
-            if not text_column:
-                cat_cols = list(df.select_dtypes(include=['object', 'string', 'category']).columns)
-                text_column = cat_cols[0] if cat_cols else None
-
-        if not text_column or text_column not in df.columns:
-            return jsonify({'success': False, 'error': 'No suitable text column found'}), 400
-
-        # Select subset by index labels; indices may be strings that represent ints
-        if indices:
-            try:
-                # Normalize index types to original index type by attempting astype
-                sel_index = pd.Index(indices)
-                try:
-                    sel_index = sel_index.astype(df.index.dtype)
-                except Exception:
-                    pass
-                # Intersect with existing index to avoid KeyError
-                valid_labels = df.index.intersection(sel_index)
-                subset = df.loc[valid_labels]
-            except Exception:
-                # Fallback: if labels failed, try positional via list of ints within range
-                try:
-                    pos = [int(i) for i in indices]
-                    subset = df.iloc[[p for p in pos if 0 <= p < len(df)]]
-                except Exception:
-                    subset = df
-        else:
-            # No selection -> use entire dataframe
-            subset = df
-
-        texts = subset[text_column].astype(str).tolist()
-
-        try:
-            png_bytes = create_wordcloud_image(texts, width=800, height=500)
-        except Exception as e:
-            return jsonify({'success': False, 'error': str(e)}), 500
-
-        from io import BytesIO
-        buf = BytesIO(png_bytes)
-        buf.seek(0)
-        return send_file(buf, mimetype='image/png', as_attachment=False)
-    
     @app.route('/api/embeddings/providers', methods=['GET'])
     def list_embedding_providers():
         """List available embedding providers."""
