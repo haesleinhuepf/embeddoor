@@ -149,6 +149,10 @@ class DataManager:
         if size_col and size_col not in columns:
             columns.append(size_col)
         
+        # Include 'selection' column if it exists
+        if 'selection' in self.df.columns and 'selection' not in columns:
+            columns.append('selection')
+        
         # Get data for these columns
         plot_df = self.df[columns].copy()
         

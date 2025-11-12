@@ -88,6 +88,9 @@ def create_plot(
     if is_3d:
         fig = go.Figure()
         
+        # Check if 'selection' column exists
+        has_selection = 'selection' in df.columns
+        
         # Group by hue if specified
         if hue_col:
             for hue_value in df[hue_col].unique():
@@ -108,6 +111,63 @@ def create_plot(
                     name=str(hue_value),
                     marker=marker_dict,
                     text=subset_indices.tolist(),
+                    hovertemplate=(
+                        f'<b>Index: %{{text}}</b><br>'
+                        f'{x_col}: %{{x}}<br>'
+                        f'{y_col}: %{{y}}<br>'
+                        f'{z_col}: %{{z}}<br>'
+                        '<extra></extra>'
+                    )
+                ))
+        elif has_selection:
+            # Split data into selected and unselected
+            print("handling selection column in 3D")
+            selected_mask = df['selection'] == True
+            unselected_mask = ~selected_mask
+            
+            # Plot unselected points first
+            if unselected_mask.any():
+                unselected = df[unselected_mask].reset_index(drop=True)
+                unselected_indices = indices[unselected_mask].reset_index(drop=True)
+                
+                marker_dict = {'size': 5, 'color': 'blue'}
+                if size_col:
+                    marker_dict['size'] = unselected[size_col].tolist()
+                
+                fig.add_trace(go.Scatter3d(
+                    x=unselected[x_col].tolist(),
+                    y=unselected[y_col].tolist(),
+                    z=unselected[z_col].tolist(),
+                    mode='markers',
+                    name='Unselected',
+                    marker=marker_dict,
+                    text=unselected_indices.tolist(),
+                    hovertemplate=(
+                        f'<b>Index: %{{text}}</b><br>'
+                        f'{x_col}: %{{x}}<br>'
+                        f'{y_col}: %{{y}}<br>'
+                        f'{z_col}: %{{z}}<br>'
+                        '<extra></extra>'
+                    )
+                ))
+            
+            # Plot selected points on top in orange
+            if selected_mask.any():
+                selected = df[selected_mask].reset_index(drop=True)
+                selected_indices = indices[selected_mask].reset_index(drop=True)
+                
+                marker_dict = {'size': 5, 'color': 'orange'}
+                if size_col:
+                    marker_dict['size'] = selected[size_col].tolist()
+                
+                fig.add_trace(go.Scatter3d(
+                    x=selected[x_col].tolist(),
+                    y=selected[y_col].tolist(),
+                    z=selected[z_col].tolist(),
+                    mode='markers',
+                    name='Selected',
+                    marker=marker_dict,
+                    text=selected_indices.tolist(),
                     hovertemplate=(
                         f'<b>Index: %{{text}}</b><br>'
                         f'{x_col}: %{{x}}<br>'
@@ -155,6 +215,9 @@ def create_plot(
         # 2D scatter plot
         fig = go.Figure()
         
+        # Check if 'selection' column exists
+        has_selection = 'selection' in df.columns
+        
         if hue_col:
             print("hue")
             for hue_value in df[hue_col].unique():
@@ -173,6 +236,59 @@ def create_plot(
                     name=str(hue_value),
                     marker=marker_dict,
                     text=subset_indices.tolist(),
+                    hovertemplate=(
+                        f'<b>Index: %{{text}}</b><br>'
+                        f'{x_col}: %{{x}}<br>'
+                        f'{y_col}: %{{y}}<br>'
+                        '<extra></extra>'
+                    )
+                ))
+        elif has_selection:
+            # Split data into selected and unselected
+            print("handling selection column")
+            selected_mask = df['selection'] == True
+            unselected_mask = ~selected_mask
+            
+            # Plot unselected points first (so they appear behind)
+            if unselected_mask.any():
+                unselected = df[unselected_mask].reset_index(drop=True)
+                unselected_indices = indices[unselected_mask].reset_index(drop=True)
+                
+                marker_dict = {'size': 8, 'color': '#1f77b4'}
+                if size_col:
+                    marker_dict['size'] = unselected[size_col].tolist()
+                
+                fig.add_trace(go.Scatter(
+                    x=unselected[x_col].tolist(),
+                    y=unselected[y_col].tolist(),
+                    mode='markers',
+                    name='Unselected',
+                    marker=marker_dict,
+                    text=unselected_indices.tolist(),
+                    hovertemplate=(
+                        f'<b>Index: %{{text}}</b><br>'
+                        f'{x_col}: %{{x}}<br>'
+                        f'{y_col}: %{{y}}<br>'
+                        '<extra></extra>'
+                    )
+                ))
+            
+            # Plot selected points on top in orange
+            if selected_mask.any():
+                selected = df[selected_mask].reset_index(drop=True)
+                selected_indices = indices[selected_mask].reset_index(drop=True)
+                
+                marker_dict = {'size': 8, 'color': '#ff7f0e'}
+                if size_col:
+                    marker_dict['size'] = selected[size_col].tolist()
+                
+                fig.add_trace(go.Scatter(
+                    x=selected[x_col].tolist(),
+                    y=selected[y_col].tolist(),
+                    mode='markers',
+                    name='Selected',
+                    marker=marker_dict,
+                    text=selected_indices.tolist(),
                     hovertemplate=(
                         f'<b>Index: %{{text}}</b><br>'
                         f'{x_col}: %{{x}}<br>'
@@ -253,8 +369,27 @@ def create_table_html(data: List[Dict], max_rows: int = 1000) -> str:
     df = pd.DataFrame(data)
     if len(df) > max_rows:
         df = df.head(max_rows)
-    
-    return df.to_html(classes='data-table', index=True, border=0)
+
+    # If 'selection' column exists, style selected rows
+    if 'selection' in df.columns:
+        def row_style(row):
+            sel = row.get('selection', 0)
+            if sel == 1 or sel is True:
+                return 'background-color: #ffdcbd; color: black;'
+            return ''
+        styles = [row_style(row) for row in df.to_dict(orient='records')]
+        # Build HTML manually to apply row styles
+        html = '<table class="data-table" border="0">'
+        # Header
+        html += '<thead><tr>' + ''.join(f'<th>{col}</th>' for col in df.columns) + '</tr></thead>'
+        html += '<tbody>'
+        for i, row in enumerate(df.itertuples(index=False, name=None)):
+            style = styles[i]
+            html += f'<tr style="{style}">' + ''.join(f'<td>{cell}</td>' for cell in row) + '</tr>'
+        html += '</tbody></table>'
+        return html
+    else:
+        return df.to_html(classes='data-table', index=True, border=0)
 
 
 def create_wordcloud_image(

@@ -301,13 +301,46 @@ class FloatingPanel {
                         });
                         window.app.setStatus(`Selected ${this.selectedIndices.length} points in ${this.title}`);
                         
-                        // Refresh all other panels when selection is made
-                        window.app.refreshOtherPanels(this.id);
+                        // Save selection to dataframe
+                        this.saveSelection();
+                        
+                        // Refresh all when selection is made
+                        window.app.refreshOtherPanels(-1);
                     }
                 });
             }
         } catch (error) {
             console.error('Error updating plot:', error);
+        }
+    }
+
+    async saveSelection() {
+        if (!this.selectedIndices || this.selectedIndices.length === 0) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/selection/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    column_name: 'selection',
+                    indices: this.selectedIndices
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                window.app.setStatus(`Selection saved: ${result.count} points marked`);
+                // Reload data info to include new column
+                await window.app.loadDataInfo();
+                // Refresh all plot panels to show selected points in orange
+                window.app.refreshAllPlotPanels();
+            } else {
+                console.error('Error saving selection:', result.error);
+            }
+        } catch (error) {
+            console.error('Error saving selection:', error);
         }
     }
 
@@ -911,6 +944,10 @@ class EmbeddoorApp {
                 this.updateUI();
                 this.refreshAll();
                 this.setStatus(`Loaded ${result.shape[0]} rows, ${result.shape[1]} columns`);
+                    // Open a table panel if no panels are open
+                    if (this.panels.length === 0) {
+                        this.addPanel('table', 'Table', 40, 40, 700, 400);
+                    }
             } else {
                 alert('Error loading file: ' + result.error);
                 this.setStatus('Error loading file');
@@ -1138,6 +1175,15 @@ class EmbeddoorApp {
         this.panels.forEach(panel => {
             if (panel.id !== excludePanelId) {
                 panel.updateContent();
+            }
+        });
+    }
+
+    refreshAllPlotPanels() {
+        // Refresh all plot panels to show updated selection
+        this.panels.forEach(panel => {
+            if (panel.type === 'plot') {
+                panel.updatePlot();
             }
         });
     }
