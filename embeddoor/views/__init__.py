@@ -8,6 +8,7 @@ from embeddoor.views.plot import register_plot_routes
 from embeddoor.views.table import register_table_routes
 from embeddoor.views.wordcloud import register_wordcloud_routes
 from embeddoor.views.images import register_images_routes
+from embeddoor.views.terminal import register_terminal_routes
 
 def register_all_views(app):
     """Register all view routes with the Flask app."""
@@ -15,3 +16,4 @@ def register_all_views(app):
     register_table_routes(app)
     register_wordcloud_routes(app)
     register_images_routes(app)
+    register_terminal_routes(app)

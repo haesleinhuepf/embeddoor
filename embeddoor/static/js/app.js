@@ -40,6 +40,7 @@ class FloatingPanel {
                     <option value="table" ${this.type === 'table' ? 'selected' : ''}>Table</option>
                     <option value="wordcloud" ${this.type === 'wordcloud' ? 'selected' : ''}>Word Cloud</option>
                     <option value="images" ${this.type === 'images' ? 'selected' : ''}>Images</option>
+                    <option value="terminal" ${this.type === 'terminal' ? 'selected' : ''}>IPython Terminal</option>
                 </select>
                 <button class="panel-btn" data-action="minimize" title="Minimize">−</button>
                 <button class="panel-btn" data-action="close" title="Close">×</button>
@@ -168,7 +169,8 @@ class FloatingPanel {
     async updateContent() {
         const body = this.element.querySelector('.panel-body');
         
-        if (!window.app.dataInfo || !window.app.dataInfo.loaded) {
+        // Terminal can work without data loaded
+        if (this.type !== 'terminal' && (!window.app.dataInfo || !window.app.dataInfo.loaded)) {
             body.innerHTML = '<p class="placeholder">No data loaded</p>';
             return;
         }
@@ -186,6 +188,9 @@ class FloatingPanel {
                     break;
                 case 'images':
                     await this.renderImages(body);
+                    break;
+                case 'terminal':
+                    await this.renderTerminal(body);
                     break;
             }
         } catch (error) {
@@ -444,6 +449,198 @@ class FloatingPanel {
             container.innerHTML = `<p class="placeholder">Error: ${error.message}</p>`;
         }
     }
+
+    async renderTerminal(body) {
+        // Initialize terminal session ID if not exists
+        if (!this.terminalSessionId) {
+            this.terminalSessionId = `terminal-${this.id}-${Date.now()}`;
+            this.terminalHistory = [];
+            this.historyIndex = -1;
+        }
+
+        body.innerHTML = `
+            <div style="display: flex; flex-direction: column; height: 100%; font-family: 'Courier New', monospace; font-size: 13px;">
+                <div style="padding: 4px 8px; background: #2c2c2c; color: #fff; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 11px;">IPython Terminal</span>
+                    <button class="panel-btn" style="background: #444; color: #fff; padding: 2px 6px; font-size: 11px;" onclick="window.app.getPanel('${this.id}').resetTerminal()">Reset</button>
+                </div>
+                <div class="terminal-output" style="flex: 1; overflow-y: auto; background: #1e1e1e; color: #d4d4d4; padding: 8px; white-space: pre-wrap; word-wrap: break-word;"></div>
+                <div style="padding: 8px; background: #252526; border-top: 1px solid #444; display: flex; align-items: center;">
+                    <span style="color: #4ec9b0; margin-right: 4px;">In [<span class="term-prompt-num">1</span>]:</span>
+                    <input type="text" class="terminal-input" style="flex: 1; background: #1e1e1e; color: #d4d4d4; border: 1px solid #444; padding: 4px 8px; font-family: 'Courier New', monospace; font-size: 13px;" placeholder="Enter Python code...">
+                    <button class="terminal-execute" style="margin-left: 8px; background: #0e639c; color: #fff; border: none; padding: 4px 12px; cursor: pointer; border-radius: 2px;">Run</button>
+                </div>
+            </div>
+        `;
+
+        const outputDiv = body.querySelector('.terminal-output');
+        const input = body.querySelector('.terminal-input');
+        const executeBtn = body.querySelector('.terminal-execute');
+        const promptNum = body.querySelector('.term-prompt-num');
+
+        // Initialize terminal
+        await this.initTerminal();
+
+        // Setup event listeners
+        executeBtn.addEventListener('click', () => this.executeTerminalCode());
+        
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.executeTerminalCode();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.navigateHistory(-1);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                this.navigateHistory(1);
+            }
+        });
+
+        // Focus input
+        input.focus();
+    }
+
+    async initTerminal() {
+        try {
+            const response = await fetch('/api/view/terminal/init', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: this.terminalSessionId })
+            });
+
+            const result = await response.json();
+            if (result.success && result.output) {
+                this.appendTerminalOutput(result.output, 'info');
+            } else if (!result.success) {
+                this.appendTerminalOutput(`Error: ${result.error}`, 'error');
+            }
+        } catch (error) {
+            this.appendTerminalOutput(`Error initializing terminal: ${error.message}`, 'error');
+        }
+    }
+
+    async executeTerminalCode() {
+        const body = this.element.querySelector('.panel-body');
+        const input = body.querySelector('.terminal-input');
+        const promptNum = body.querySelector('.term-prompt-num');
+        
+        const code = input.value.trim();
+        if (!code) return;
+
+        // Add to history
+        this.terminalHistory.push(code);
+        this.historyIndex = this.terminalHistory.length;
+
+        // Display input
+        const currentPrompt = promptNum.textContent;
+        this.appendTerminalOutput(`In [${currentPrompt}]: ${code}`, 'input');
+
+        // Clear input
+        input.value = '';
+
+        try {
+            const response = await fetch('/api/view/terminal/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    session_id: this.terminalSessionId,
+                    code: code 
+                })
+            });
+
+            const result = await response.json();
+            
+            if (result.output) {
+                this.appendTerminalOutput(result.output, 'output');
+            }
+            
+            if (result.error) {
+                this.appendTerminalOutput(result.error, 'error');
+            }
+
+            // Increment prompt number
+            promptNum.textContent = parseInt(currentPrompt) + 1;
+
+        } catch (error) {
+            this.appendTerminalOutput(`Error: ${error.message}`, 'error');
+        }
+
+        // Scroll to bottom
+        const outputDiv = body.querySelector('.terminal-output');
+        outputDiv.scrollTop = outputDiv.scrollHeight;
+    }
+
+    appendTerminalOutput(text, type = 'output') {
+        const body = this.element.querySelector('.panel-body');
+        const outputDiv = body.querySelector('.terminal-output');
+        
+        const line = document.createElement('div');
+        line.style.marginBottom = '4px';
+        
+        if (type === 'input') {
+            line.style.color = '#d4d4d4';
+        } else if (type === 'output') {
+            line.style.color = '#cccccc';
+        } else if (type === 'error') {
+            line.style.color = '#f48771';
+        } else if (type === 'info') {
+            line.style.color = '#4fc1ff';
+        }
+        
+        line.textContent = text;
+        outputDiv.appendChild(line);
+    }
+
+    navigateHistory(direction) {
+        if (this.terminalHistory.length === 0) return;
+        
+        const body = this.element.querySelector('.panel-body');
+        const input = body.querySelector('.terminal-input');
+        
+        this.historyIndex += direction;
+        
+        if (this.historyIndex < 0) {
+            this.historyIndex = 0;
+        } else if (this.historyIndex >= this.terminalHistory.length) {
+            this.historyIndex = this.terminalHistory.length;
+            input.value = '';
+            return;
+        }
+        
+        input.value = this.terminalHistory[this.historyIndex];
+    }
+
+    async resetTerminal() {
+        try {
+            const response = await fetch('/api/view/terminal/reset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: this.terminalSessionId })
+            });
+
+            const result = await response.json();
+            
+            // Clear output
+            const body = this.element.querySelector('.panel-body');
+            const outputDiv = body.querySelector('.terminal-output');
+            outputDiv.innerHTML = '';
+            
+            // Reset prompt number
+            const promptNum = body.querySelector('.term-prompt-num');
+            promptNum.textContent = '1';
+            
+            // Clear history
+            this.terminalHistory = [];
+            this.historyIndex = -1;
+            
+            // Reinitialize
+            await this.initTerminal();
+            
+        } catch (error) {
+            this.appendTerminalOutput(`Error resetting terminal: ${error.message}`, 'error');
+        }
+    }
 }
 
 class EmbeddoorApp {
@@ -554,7 +751,8 @@ class EmbeddoorApp {
             'plot': 'Plot',
             'table': 'Table',
             'wordcloud': 'Word Cloud',
-            'images': 'Images'
+            'images': 'Images',
+            'terminal': 'IPython Terminal'
         };
 
         // Offset new panels slightly
