@@ -47,6 +47,43 @@ class DataManager:
         except Exception as e:
             return {'success': False, 'error': str(e)}
     
+    def load_huggingface(self, dataset_name: str, split: Optional[str] = None) -> Dict[str, Any]:
+        """Load a dataset from Huggingface."""
+        try:
+            from datasets import load_dataset
+            
+            print(f"Loading dataset from Huggingface: {dataset_name}")
+            
+            # Load the dataset
+            if split:
+                dataset = load_dataset(dataset_name, split=split)
+            else:
+                # Load all splits and use the first one
+                dataset = load_dataset(dataset_name)
+                # If it's a DatasetDict, get the first split
+                if hasattr(dataset, 'keys'):
+                    split_name = list(dataset.keys())[0]
+                    dataset = dataset[split_name]
+                    print(f"Using split: {split_name}")
+            
+            # Convert to pandas DataFrame
+            self.df = dataset.to_pandas()
+            print(f"Loaded dataset with shape: {self.df.shape}")
+            
+            self.current_file = f"huggingface:{dataset_name}"
+            
+            return {
+                'success': True,
+                'shape': self.df.shape,
+                'columns': list(self.df.columns),
+                'numeric_columns': list(self.df.select_dtypes(include=[np.float64, np.float32, np.int32, np.int64]).columns),
+                'dtypes': {col: str(dtype) for col, dtype in self.df.dtypes.items()}
+            }
+        except ImportError:
+            return {'success': False, 'error': 'The datasets library is not installed. Please install it with: pip install datasets'}
+        except Exception as e:
+            return {'success': False, 'error': f'Error loading dataset: {str(e)}'}
+    
     def save_parquet(self, filepath: str) -> Dict[str, Any]:
         """Save the current dataframe to Parquet."""
         if self.df is None:

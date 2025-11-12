@@ -467,6 +467,12 @@ class EmbeddoorApp {
         document.getElementById('save-file').addEventListener('click', () => this.saveFileDialog());
         document.getElementById('btn-save').addEventListener('click', () => this.saveFileDialog());
         document.getElementById('export-csv').addEventListener('click', () => this.saveFileDialog('csv'));
+        document.getElementById('load-huggingface').addEventListener('click', () => this.showHuggingfaceDialog());
+        document.getElementById('huggingface-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.loadFromHuggingface();
+        });
+        document.getElementById('huggingface-dialog-cancel').addEventListener('click', () => this.hideModal('huggingface-dialog'));
 
         // Embedding menu
         document.getElementById('create-embedding').addEventListener('click', () => this.showEmbeddingDialog());
@@ -678,6 +684,48 @@ class EmbeddoorApp {
         } catch (error) {
             console.error('Error:', error);
             alert('Error saving file: ' + error.message);
+            this.setStatus('Error');
+        }
+    }
+
+    showHuggingfaceDialog() {
+        this.showModal('huggingface-dialog');
+    }
+
+    async loadFromHuggingface() {
+        const datasetName = document.getElementById('hf-dataset-name').value.trim();
+        const split = document.getElementById('hf-split').value.trim();
+        
+        if (!datasetName) {
+            alert('Please enter a dataset name');
+            return;
+        }
+        
+        this.hideModal('huggingface-dialog');
+        this.setStatus('Loading dataset from Huggingface...');
+        
+        try {
+            const response = await fetch('/api/data/load-huggingface', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dataset_name: datasetName, split: split || null })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.dataInfo = result;
+                this.dataInfo.loaded = true;
+                this.updateUI();
+                this.refreshAll();
+                this.setStatus(`Loaded ${result.shape[0]} rows, ${result.shape[1]} columns from Huggingface`);
+            } else {
+                alert('Error loading dataset from Huggingface: ' + result.error);
+                this.setStatus('Error loading dataset');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error loading dataset from Huggingface: ' + error.message);
             this.setStatus('Error');
         }
     }

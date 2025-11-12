@@ -15,6 +15,7 @@
                 <span>File</span>
                 <div class="dropdown-content">
                     <a href="#" id="open-file">Open CSV/Parquet...</a>
+                    <a href="#" id="load-huggingface">Load from Huggingface...</a>
                     <a href="#" id="save-file">Save as Parquet...</a>
                     <a href="#" id="export-csv">Export as CSV...</a>
                 </div>
@@ -137,6 +138,25 @@
                 <div class="modal-buttons">
                     <button type="submit">Add</button>
                     <button type="button" id="add-panel-dialog-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="huggingface-dialog" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Load Dataset from Huggingface</h2>
+            <form id="huggingface-form">
+                <label>Dataset Name:
+                    <input type="text" id="hf-dataset-name" placeholder="e.g., ScaDS-AI/dataset-name" required>
+                </label>
+                <label>Split (optional):
+                    <input type="text" id="hf-split" placeholder="e.g., train, test (default: first available)">
+                </label>
+                <div class="modal-buttons">
+                    <button type="submit">Load</button>
+                    <button type="button" id="huggingface-dialog-cancel">Cancel</button>
                 </div>
             </form>
         </div>

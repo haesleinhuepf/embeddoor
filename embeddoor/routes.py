@@ -109,6 +109,23 @@ def register_routes(app):
 
         return jsonify(result)
     
+    @app.route('/api/data/load-huggingface', methods=['POST'])
+    def load_huggingface():
+        """Load data from a Huggingface dataset."""
+        data = request.json
+        dataset_name = data.get('dataset_name')
+        split = data.get('split')
+        
+        if not dataset_name:
+            return jsonify({'success': False, 'error': 'No dataset name provided'}), 400
+        
+        result = app.data_manager.load_huggingface(dataset_name, split)
+        
+        if result.get('success'):
+            print("Huggingface dataset loaded successfully:", result)
+        
+        return jsonify(result)
+    
     @app.route('/api/data/save', methods=['POST'])
     def save_data():
         """Save data to a file."""
