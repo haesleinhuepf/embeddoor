@@ -74,6 +74,7 @@ class FloatingPanel {
         // View type change
         viewSelector.addEventListener('change', (e) => {
             this.type = e.target.value;
+            this.updateTitle();
             this.updateContent();
         });
 
@@ -164,6 +165,22 @@ class FloatingPanel {
         this.element.classList.toggle('minimized', this.minimized);
         const btn = this.element.querySelector('[data-action="minimize"]');
         btn.textContent = this.minimized ? '+' : '−';
+    }
+
+    updateTitle() {
+        const typeNames = {
+            'plot': 'Plot',
+            'table': 'Table',
+            'wordcloud': 'Word Cloud',
+            'images': 'Images',
+            'terminal': 'IPython Terminal'
+        };
+        
+        this.title = typeNames[this.type] || this.type;
+        const titleElement = this.element.querySelector('.panel-title');
+        if (titleElement) {
+            titleElement.textContent = this.title;
+        }
     }
 
     async updateContent() {
