@@ -140,10 +140,6 @@ Try: data.head(), data.describe(), data.shape
                             result.error_in_exec.__traceback__
                         ))
                 
-                # If there's a result value (not None), add it to output
-                if result.result is not None:
-                    output += repr(result.result) + '\n'
-                
                 return jsonify({
                     'success': not error_occurred,
                     'output': output,
