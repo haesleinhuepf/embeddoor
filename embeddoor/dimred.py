@@ -1,45 +1,23 @@
-"""Dimensionality reduction module."""
+"""Dimensionality reduction module.
+
+This module provides a unified interface to various dimensionality reduction
+techniques, using the modular implementations in the dim_red package.
+"""
 
 import numpy as np
 from typing import List, Dict, Any
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
+
+from embeddoor.dim_red import get_available_methods, get_method
 
 
 def get_dimred_methods() -> List[Dict[str, Any]]:
-    """Get list of available dimensionality reduction methods."""
-    return [
-        {
-            'name': 'pca',
-            'display_name': 'PCA (Principal Component Analysis)',
-            'description': 'Linear dimensionality reduction using SVD',
-            'parameters': {
-                'n_components': {'type': 'int', 'default': 2, 'min': 1, 'max': 10}
-            }
-        },
-        {
-            'name': 'tsne',
-            'display_name': 't-SNE (t-distributed Stochastic Neighbor Embedding)',
-            'description': 'Non-linear dimensionality reduction for visualization',
-            'parameters': {
-                'n_components': {'type': 'int', 'default': 2, 'min': 1, 'max': 3},
-                'perplexity': {'type': 'float', 'default': 30.0, 'min': 5.0, 'max': 50.0},
-                'learning_rate': {'type': 'float', 'default': 200.0, 'min': 10.0, 'max': 1000.0},
-                'n_iter': {'type': 'int', 'default': 1000, 'min': 250, 'max': 5000}
-            }
-        },
-        {
-            'name': 'umap',
-            'display_name': 'UMAP (Uniform Manifold Approximation and Projection)',
-            'description': 'Non-linear dimensionality reduction preserving global structure',
-            'parameters': {
-                'n_components': {'type': 'int', 'default': 2, 'min': 1, 'max': 10},
-                'n_neighbors': {'type': 'int', 'default': 15, 'min': 2, 'max': 200},
-                'min_dist': {'type': 'float', 'default': 0.1, 'min': 0.0, 'max': 0.99},
-                'metric': {'type': 'str', 'default': 'euclidean', 'options': ['euclidean', 'cosine', 'manhattan']}
-            }
-        }
-    ]
+    """
+    Get list of available dimensionality reduction methods.
+    
+    Returns:
+        List of dictionaries containing method information
+    """
+    return get_available_methods()
 
 
 def apply_dimred(
@@ -51,59 +29,26 @@ def apply_dimred(
     """
     Apply dimensionality reduction to embeddings.
     
+    This function serves as the main entry point for applying any dimensionality
+    reduction technique. It uses the modular implementations from the dim_red package.
+    
     Args:
         embeddings: List of embedding vectors
-        method: Name of the method ('pca', 'tsne', 'umap')
+        method: Name of the method (e.g., 'pca', 'tsne', 'umap')
         n_components: Number of components to reduce to
-        **kwargs: Additional parameters for the method
+        **kwargs: Additional method-specific parameters
     
     Returns:
-        numpy array of shape (n_samples, n_components)
+        numpy array of shape (n_samples, n_components) with reduced dimensions
+    
+    Raises:
+        ValueError: If method name is not recognized
+        ImportError: If required dependencies are not installed (e.g., umap-learn)
     """
-    # Convert to numpy array
-    X = np.array(embeddings)
+    # Get the appropriate method instance
+    method_instance = get_method(method)
     
-    if method == 'pca':
-        reducer = PCA(n_components=n_components)
-        reduced = reducer.fit_transform(X)
-    
-    elif method == 'tsne':
-        perplexity = kwargs.get('perplexity', 30.0)
-        learning_rate = kwargs.get('learning_rate', 200.0)
-        n_iter = kwargs.get('n_iter', 1000)
-        
-        reducer = TSNE(
-            n_components=n_components,
-            perplexity=perplexity,
-            learning_rate=learning_rate,
-            n_iter=n_iter,
-            random_state=42
-        )
-        reduced = reducer.fit_transform(X)
-    
-    elif method == 'umap':
-        try:
-            from umap import UMAP
-        except ImportError:
-            raise ImportError(
-                "umap-learn is required for UMAP. "
-                "Install with: pip install umap-learn"
-            )
-        
-        n_neighbors = kwargs.get('n_neighbors', 15)
-        min_dist = kwargs.get('min_dist', 0.1)
-        metric = kwargs.get('metric', 'euclidean')
-        
-        reducer = UMAP(
-            n_components=n_components,
-            n_neighbors=n_neighbors,
-            min_dist=min_dist,
-            metric=metric,
-            random_state=42
-        )
-        reduced = reducer.fit_transform(X)
-    
-    else:
-        raise ValueError(f"Unknown dimensionality reduction method: {method}")
+    # Apply the dimensionality reduction
+    reduced = method_instance.apply(embeddings, n_components, **kwargs)
     
     return reduced
