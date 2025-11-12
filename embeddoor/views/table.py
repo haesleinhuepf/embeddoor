@@ -16,23 +16,29 @@ def register_table_routes(app):
         """Get a table view of the current data.
         
         Query Parameters:
-            n: int - Number of rows to display (default: 100)
+            n: int - Number of rows to display (default: 20)
             start: int - Starting row index (default: 0)
         
         Returns:
             HTML table or JSON error
         """
-        n = request.args.get('n', default=100, type=int)
+        # Get slicing parameters
         start = request.args.get('start', default=0, type=int)
-        
+        stop = request.args.get('stop', default=None, type=int)
+        step = request.args.get('step', default=1, type=int)
+
         # Ensure data is loaded
         if app.data_manager.df is None:
             return jsonify({'error': 'No data loaded'}), 404
-        
-        # Get data slice
+
+        # Get data slice using Python-like indexing
         df = app.data_manager.df
-        end = min(start + n, len(df))
-        sample_df = df.iloc[start:end].copy()
+        # If stop is None, default to start+20
+        if stop is None:
+            stop = min(start + 20, len(df))
+        else:
+            stop = min(stop, len(df))
+        sample_df = df.iloc[start:stop:step].copy()
         
         # Replace lists/arrays with placeholder strings for better display
         for col in sample_df.select_dtypes(include=['object']).columns:
@@ -41,8 +47,7 @@ def register_table_routes(app):
             )
         
         # Convert to HTML
-        html = create_table_html(sample_df.to_dict(orient='records'), max_rows=n)
-        
+        html = create_table_html(sample_df.to_dict(orient='records'), max_rows=len(sample_df))
         return html
     
     @app.route('/api/view/table/info', methods=['GET'])

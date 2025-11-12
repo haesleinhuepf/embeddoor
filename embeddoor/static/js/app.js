@@ -316,13 +316,36 @@ class FloatingPanel {
     }
 
     async renderTable(body) {
-        try {
-            const response = await fetch('/api/view/table?n=100');
-            const html = await response.text();
-            body.innerHTML = html;
-        } catch (error) {
-            body.innerHTML = `<p class="placeholder">Error loading table: ${error.message}</p>`;
+        // Add controls for start, stop, step
+        body.innerHTML = `
+            <div style="padding: 8px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <label style="font-size: 12px;">Start: <input type="number" id="table-start" value="0" style="width: 60px;"></label>
+                    <label style="font-size: 12px;">Stop: <input type="number" id="table-stop" value="20" style="width: 60px;"></label>
+                    <label style="font-size: 12px;">Step: <input type="number" id="table-step" value="1" min="1" style="width: 60px;"></label>
+                    <button class="panel-btn" id="table-update-btn" style="color: #2779cb;">Update</button>
+                </div>
+            </div>
+            <div id="table-content"></div>
+        `;
+
+        async function fetchTable() {
+            const start = document.getElementById('table-start').value;
+            const stop = document.getElementById('table-stop').value;
+            const step = document.getElementById('table-step').value;
+            const url = `/api/view/table?start=${start}&stop=${stop}&step=${step}`;
+            try {
+                const response = await fetch(url);
+                const html = await response.text();
+                document.getElementById('table-content').innerHTML = html;
+            } catch (error) {
+                document.getElementById('table-content').innerHTML = `<p class="placeholder">Error loading table: ${error.message}</p>`;
+            }
         }
+
+        document.getElementById('table-update-btn').addEventListener('click', fetchTable);
+        // Initial load
+        fetchTable();
     }
 
     async renderWordCloud(body) {
