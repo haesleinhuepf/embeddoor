@@ -6,6 +6,8 @@ Provides an interactive IPython terminal for data exploration.
 from flask import jsonify, request, Response
 import json
 import sys
+import os
+import configparser
 from io import StringIO
 from contextlib import redirect_stdout, redirect_stderr
 
@@ -204,6 +206,153 @@ Try: data.head(), data.describe(), data.shape
                 'success': False,
                 'error': str(e),
                 'completions': []
+            }), 500
+    
+    @app.route('/api/view/terminal/bob', methods=['POST'])
+    def bob_assist():
+        """Ask Bob (LLM assistant) to generate Python code.
+        
+        Request JSON:
+            session_id: str - Session identifier
+            prompt: str - User's natural language request
+        
+        Returns:
+            JSON with suggested Python code
+        """
+        try:
+            data = request.json
+            session_id = data.get('session_id', 'default')
+            prompt = data.get('prompt', '')
+            
+            if not prompt.strip():
+                return jsonify({
+                    'success': False,
+                    'error': 'Empty prompt provided'
+                }), 400
+            
+            # Get or create shell to gather context
+            if session_id not in app.ipython_shells:
+                init_terminal()
+            
+            shell = app.ipython_shells.get(session_id)
+            
+            # Gather information about available variables
+            variables_info = []
+            if shell:
+                # Get user namespace variables (exclude built-ins and modules)
+                for var_name, var_value in shell.user_ns.items():
+                    if not var_name.startswith('_'):
+                        var_type = type(var_value).__name__
+                        
+                        # Add more details for known types
+                        details = ""
+                        if var_type == 'DataFrame':
+                            details = f" with shape {var_value.shape} and columns {list(var_value.columns)}"
+                        elif var_type == 'ndarray':
+                            details = f" with shape {var_value.shape}"
+                        elif var_type in ['list', 'dict', 'tuple', 'set']:
+                            details = f" with length {len(var_value)}"
+                        
+                        variables_info.append(f"  - {var_name}: {var_type}{details}")
+            
+            variables_context = "\n".join(variables_info) if variables_info else "  No variables defined yet"
+            
+            # Read LLM configuration
+            config = configparser.ConfigParser()
+            config_path = os.path.join(os.getcwd(), 'config.ini')
+            
+            # Default values
+            llm_api_url = "https://llm.scads.ai/v1/chat/completions"
+            llm_api_key = None
+            llm_model = "openai/gpt-oss-120b"
+            
+            if os.path.exists(config_path):
+                config.read(config_path)
+                if 'llm' in config:
+                    llm_api_url = config['llm'].get('llm_api_url', llm_api_url)
+                    llm_api_key = config['llm'].get('llm_api_key', None)
+                    llm_model = config['llm'].get('llm_model', llm_model)
+            
+            # Read API key from environment variable if not set in config
+            if not llm_api_key:
+                llm_api_key = os.environ.get('SCADSAI_API_KEY', os.environ.get('OPENAI_API_KEY', 'ollama'))
+            
+            # Construct prompt for LLM
+            system_prompt = """You are a Python code assistant. The user is working in an IPython terminal with data analysis tools.
+Your task is to generate a SINGLE LINE of Python code that accomplishes what the user asks.
+
+Available variables in the current session:
+{variables_context}
+
+Important:
+- Return ONLY the Python code, no explanations or markdown
+- Make it a single line (you can use semicolons to chain commands if needed)
+- Use the available variables when appropriate
+- Common imports are available: pandas as pd, numpy as np
+- The main DataFrame is typically in variable 'data'
+- Keep it concise and executable"""
+            
+            full_prompt = system_prompt.format(variables_context=variables_context)
+            
+            # Call LLM API
+            import requests
+            
+            headers = {
+                'Content-Type': 'application/json',
+            }
+            
+            if llm_api_key and llm_api_key.lower() != 'none':
+                headers['Authorization'] = f'Bearer {llm_api_key}'
+            
+            llm_payload = {
+                'model': llm_model,
+                'messages': [
+                    {'role': 'system', 'content': full_prompt},
+                    {'role': 'user', 'content': prompt}
+                ],
+                'temperature': 0.3,
+                'max_tokens': 200
+            }
+            
+            llm_response = requests.post(
+                llm_api_url,
+                headers=headers,
+                json=llm_payload,
+                timeout=30
+            )
+            
+            if llm_response.status_code != 200:
+                return jsonify({
+                    'success': False,
+                    'error': f'LLM API error: {llm_response.status_code} - {llm_response.text}'
+                }), 500
+            
+            llm_result = llm_response.json()
+            
+            # Extract the generated code
+            suggested_code = llm_result.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
+            
+            # Clean up the code (remove markdown code blocks if present)
+            if suggested_code.startswith('```'):
+                lines = suggested_code.split('\n')
+                suggested_code = '\n'.join(lines[1:-1]) if len(lines) > 2 else suggested_code
+                suggested_code = suggested_code.replace('```python', '').replace('```', '').strip()
+            
+            return jsonify({
+                'success': True,
+                'code': suggested_code
+            })
+            
+        except requests.RequestException as e:
+            return jsonify({
+                'success': False,
+                'error': f'Error connecting to LLM server: {str(e)}'
+            }), 500
+        except Exception as e:
+            import traceback
+            return jsonify({
+                'success': False,
+                'error': f'Error processing Bob request: {traceback.format_exc()}'
             }), 500
     
     @app.route('/api/view/terminal/reset', methods=['POST'])

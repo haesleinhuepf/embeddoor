@@ -640,6 +640,60 @@ class FloatingPanel {
         const code = input.value.trim();
         if (!code) return;
 
+        // Check if command starts with "bob"
+        if (code.toLowerCase().startsWith('bob')) {
+            const bobPrompt = code.substring(3).trim();
+            
+            // Add to history
+            this.terminalHistory.push(code);
+            this.historyIndex = this.terminalHistory.length;
+            
+            // Display the bob command
+            const currentPrompt = promptNum.textContent;
+            this.appendTerminalOutput(`In [${currentPrompt}]: ${code}`, 'input');
+            
+            // Clear input
+            input.value = '';
+            
+            // Show loading message
+            this.appendTerminalOutput('🤖 Bob is thinking...', 'info');
+            
+            try {
+                const response = await fetch('/api/view/terminal/bob', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        session_id: this.terminalSessionId,
+                        prompt: bobPrompt
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success && result.code) {
+                    this.appendTerminalOutput(`💡 Bob suggests: ${result.code}`, 'info');
+                    // Put the suggested code in the input field for review
+                    input.value = result.code;
+                    input.focus();
+                } else {
+                    this.appendTerminalOutput(`❌ Bob error: ${result.error || 'Unknown error'}`, 'error');
+                }
+
+            } catch (error) {
+                this.appendTerminalOutput(`❌ Error contacting Bob: ${error.message}`, 'error');
+            }
+            
+            // Increment prompt number
+            promptNum.textContent = parseInt(currentPrompt) + 1;
+            
+            // Scroll to bottom
+            const outputDiv = body.querySelector('.terminal-output');
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+            
+            return;
+        }
+
+        // Normal code execution (not a bob command)
         // Add to history
         this.terminalHistory.push(code);
         this.historyIndex = this.terminalHistory.length;

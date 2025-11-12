@@ -10,6 +10,7 @@ pillow>=9.5.0
 wordcloud>=1.9.0
 datasets>=2.14.0
 ipython>=8.0.0
+requests>=2.31.0
 
 # Optional - uncomment if you want to install embedding models
 # transformers>=4.30.0
