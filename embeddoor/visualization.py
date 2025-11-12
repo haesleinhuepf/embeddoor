@@ -142,6 +142,7 @@ def create_plot(
                     name='Unselected',
                     marker=marker_dict,
                     text=unselected_indices.tolist(),
+                    showlegend=False,
                     hovertemplate=(
                         f'<b>Index: %{{text}}</b><br>'
                         f'{x_col}: %{{x}}<br>'
@@ -168,6 +169,7 @@ def create_plot(
                     name='Selected',
                     marker=marker_dict,
                     text=selected_indices.tolist(),
+                    showlegend=False,
                     hovertemplate=(
                         f'<b>Index: %{{text}}</b><br>'
                         f'{x_col}: %{{x}}<br>'
@@ -265,6 +267,7 @@ def create_plot(
                     name='Unselected',
                     marker=marker_dict,
                     text=unselected_indices.tolist(),
+                    showlegend=False,
                     hovertemplate=(
                         f'<b>Index: %{{text}}</b><br>'
                         f'{x_col}: %{{x}}<br>'
@@ -289,6 +292,7 @@ def create_plot(
                     name='Selected',
                     marker=marker_dict,
                     text=selected_indices.tolist(),
+                    showlegend=False,
                     hovertemplate=(
                         f'<b>Index: %{{text}}</b><br>'
                         f'{x_col}: %{{x}}<br>'
@@ -366,9 +370,23 @@ def create_table_html(data: List[Dict], max_rows: int = 1000) -> str:
     Returns:
         HTML string
     """
+
     df = pd.DataFrame(data)
     if len(df) > max_rows:
         df = df.head(max_rows)
+
+    def convert_image_cell(col, cell):
+        if isinstance(col, str) and 'image' in col.lower():
+            if isinstance(cell, dict) and 'bytes' in cell:
+                import base64
+                img_bytes = cell['bytes']
+                if isinstance(img_bytes, str):
+                    # If already base64 string
+                    b64 = img_bytes
+                else:
+                    b64 = base64.b64encode(img_bytes).decode('utf-8')
+                return f'<img src="data:image/png;base64,{b64}" style="max-width:300px;max-height:200px;" />'
+        return cell
 
     # If 'selection' column exists, style selected rows
     if 'selection' in df.columns:
@@ -378,18 +396,27 @@ def create_table_html(data: List[Dict], max_rows: int = 1000) -> str:
                 return 'background-color: #ffdcbd; color: black;'
             return ''
         styles = [row_style(row) for row in df.to_dict(orient='records')]
-        # Build HTML manually to apply row styles
         html = '<table class="data-table" border="0">'
-        # Header
         html += '<thead><tr>' + ''.join(f'<th>{col}</th>' for col in df.columns) + '</tr></thead>'
         html += '<tbody>'
-        for i, row in enumerate(df.itertuples(index=False, name=None)):
+        for i, row in enumerate(df.to_dict(orient='records')):
             style = styles[i]
-            html += f'<tr style="{style}">' + ''.join(f'<td>{cell}</td>' for cell in row) + '</tr>'
+            html += f'<tr style="{style}">' + ''.join(
+                f'<td>{convert_image_cell(col, row[col])}</td>' for col in df.columns
+            ) + '</tr>'
         html += '</tbody></table>'
         return html
     else:
-        return df.to_html(classes='data-table', index=True, border=0)
+        # Apply image conversion to all cells
+        html = '<table class="data-table" border="0">'
+        html += '<thead><tr>' + ''.join(f'<th>{col}</th>' for col in df.columns) + '</tr></thead>'
+        html += '<tbody>'
+        for row in df.to_dict(orient='records'):
+            html += '<tr>' + ''.join(
+                f'<td>{convert_image_cell(col, row[col])}</td>' for col in df.columns
+            ) + '</tr>'
+        html += '</tbody></table>'
+        return html
 
 
 def create_wordcloud_image(
