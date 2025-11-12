@@ -300,6 +300,9 @@ class FloatingPanel {
                             return Number.isNaN(n) ? p.text : n;
                         });
                         window.app.setStatus(`Selected ${this.selectedIndices.length} points in ${this.title}`);
+                        
+                        // Refresh all other panels when selection is made
+                        window.app.refreshOtherPanels(this.id);
                     }
                 });
             }
@@ -353,16 +356,16 @@ class FloatingPanel {
             <div style="padding: 8px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <label style="font-size: 12px;">Text Column: <select class="wc-text-column"></select></label>
-                    <button class="panel-btn" style="color: #2779cb;" onclick="window.app.getPanel('${this.id}').generateWordCloud()">Generate</button>
                 </div>
             </div>
             <div class="wc-container" style="width: 100%; height: calc(100% - 45px); overflow: auto; text-align: center;">
-                <p class="placeholder">Select points in a plot panel and click Generate</p>
+                <p class="placeholder">Select points in a plot panel to generate word cloud</p>
             </div>
         `;
 
         // Populate text column selector
         const textSelect = body.querySelector('.wc-text-column');
+        let initialValue = this.config.wcTextColumn;
         if (window.app.dataInfo) {
             const dtypes = window.app.dataInfo.dtypes || {};
             const textCols = window.app.dataInfo.columns.filter(col => {
@@ -370,8 +373,23 @@ class FloatingPanel {
                 return dt.includes('object') || dt.includes('string') || dt.includes('category');
             });
             textCols.forEach(col => textSelect.add(new Option(col, col)));
-            if (textCols.length > 0) textSelect.value = textCols[0];
+            if (textCols.length > 0) {
+                // If previous selection exists and is valid, restore it
+                if (initialValue && textCols.includes(initialValue)) {
+                    textSelect.value = initialValue;
+                } else {
+                    textSelect.value = textCols[0];
+                }
+                // Auto-generate on initial render
+                this.generateWordCloud();
+            }
         }
+
+        // Auto-generate when column selection changes
+        textSelect.addEventListener('change', () => {
+            this.config.wcTextColumn = textSelect.value;
+            this.generateWordCloud();
+        });
     }
 
     async generateWordCloud() {
@@ -422,11 +440,10 @@ class FloatingPanel {
             <div style="padding: 8px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <label style="font-size: 12px;">Image Column: <select class="img-column"></select></label>
-                    <button class="panel-btn" style="color: #2779cb;" onclick="window.app.getPanel('${this.id}').loadImages()">Load</button>
                 </div>
             </div>
             <div class="img-container" style="width: 100%; height: calc(100% - 45px); overflow: auto; padding: 8px;">
-                <p class="placeholder">Select an image column and click Load</p>
+                <p class="placeholder">Select an image column to display images</p>
             </div>
         `;
 
@@ -437,6 +454,17 @@ class FloatingPanel {
             if (result.success && result.columns) {
                 const imgSelect = body.querySelector('.img-column');
                 result.columns.forEach(col => imgSelect.add(new Option(col, col)));
+                
+                // Auto-load if there's a column available
+                if (result.columns.length > 0) {
+                    imgSelect.value = result.columns[0];
+                    this.loadImages();
+                }
+
+                // Auto-load when column selection changes
+                imgSelect.addEventListener('change', () => {
+                    this.loadImages();
+                });
             }
         } catch (error) {
             console.error('Error fetching image columns:', error);
@@ -454,10 +482,21 @@ class FloatingPanel {
         container.innerHTML = '<p class="placeholder">Loading images...</p>';
 
         try {
+            // Get selected indices from any plot panel or use all data
+            let indices = this.selectedIndices;
+            if (!indices || indices.length === 0) {
+                // Try to get selection from first plot panel
+                const plotPanel = window.app.panels.find(p => p.type === 'plot');
+                if (plotPanel) {
+                    indices = plotPanel.selectedIndices;
+                }
+            }
+
             const response = await fetch('/api/view/images', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
+                    indices: indices || [],
                     image_column: imageColumn,
                     max_images: 50
                 })
@@ -1092,6 +1131,15 @@ class EmbeddoorApp {
 
     refreshAll() {
         this.panels.forEach(panel => panel.updateContent());
+    }
+
+    refreshOtherPanels(excludePanelId) {
+        // Refresh all panels except the one specified
+        this.panels.forEach(panel => {
+            if (panel.id !== excludePanelId) {
+                panel.updateContent();
+            }
+        });
     }
 
     setStatus(text) {
