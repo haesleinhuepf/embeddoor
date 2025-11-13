@@ -42,6 +42,7 @@ class FloatingPanel {
                     <option value="images" ${this.type === 'images' ? 'selected' : ''}>Images</option>
                     <option value="heatmap-embedding" ${this.type === 'heatmap-embedding' ? 'selected' : ''}>Heatmap (Embedding)</option>
                     <option value="heatmap-columns" ${this.type === 'heatmap-columns' ? 'selected' : ''}>Heatmap (Columns)</option>
+                    <option value="correlation" ${this.type === 'correlation' ? 'selected' : ''}>Pairwise Correlation</option>
                     <option value="terminal" ${this.type === 'terminal' ? 'selected' : ''}>IPython Terminal</option>
                 </select>
                 <button class="panel-btn" data-action="minimize" title="Minimize">−</button>
@@ -215,6 +216,9 @@ class FloatingPanel {
                     break;
                 case 'heatmap-columns':
                     await this.renderHeatmapColumns(body);
+                    break;
+                case 'correlation':
+                    await this.renderCorrelation(body);
                     break;
                 case 'terminal':
                     await this.renderTerminal(body);
@@ -757,6 +761,75 @@ class FloatingPanel {
         }
     }
 
+    async renderCorrelation(body) {
+        // Initialize correlation method if not set
+        if (!this.config.correlationMethod) {
+            this.config.correlationMethod = 'pearson';
+        }
+
+        body.innerHTML = `
+            <div style="padding: 8px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <label style="font-size: 12px; color: #666;">Method:</label>
+                    <select class="correlation-method-selector" style="padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+                        <option value="pearson" ${this.config.correlationMethod === 'pearson' ? 'selected' : ''}>Pearson</option>
+                        <option value="spearman" ${this.config.correlationMethod === 'spearman' ? 'selected' : ''}>Spearman</option>
+                        <option value="kendall" ${this.config.correlationMethod === 'kendall' ? 'selected' : ''}>Kendall</option>
+                    </select>
+                </div>
+            </div>
+            <div class="correlation-container" style="width: 100%; height: calc(100% - 45px);"></div>
+        `;
+
+        // Setup event listener for method selector
+        const methodSelector = body.querySelector('.correlation-method-selector');
+        methodSelector.addEventListener('change', (e) => {
+            this.config.correlationMethod = e.target.value;
+            this.updateCorrelation();
+        });
+
+        // Auto-generate on initial render
+        await this.updateCorrelation();
+    }
+
+    async updateCorrelation() {
+        const body = this.element.querySelector('.panel-body');
+        const container = body.querySelector('.correlation-container');
+        
+        container.innerHTML = '<p class="placeholder">Generating correlation matrix...</p>';
+
+        try {
+            const response = await fetch('/api/view/correlation/matrix', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    method: this.config.correlationMethod || 'pearson',
+                    width: container.clientWidth || 800,
+                    height: container.clientHeight || 600
+                })
+            });
+
+            if (response.ok) {
+                // Check if response is an image
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('image')) {
+                    const blob = await response.blob();
+                    const imageUrl = URL.createObjectURL(blob);
+                    container.innerHTML = `<img src="${imageUrl}" style="width: 100%; height: 100%; object-fit: contain;" />`;
+                } else {
+                    const error = await response.json();
+                    container.innerHTML = `<p class="placeholder">Error: ${error.error || 'Unknown error'}</p>`;
+                }
+            } else {
+                const error = await response.json();
+                container.innerHTML = `<p class="placeholder">Error: ${error.error}</p>`;
+            }
+        } catch (error) {
+            console.error('Error in updateCorrelation:', error);
+            container.innerHTML = `<p class="placeholder">Error: ${error.message}</p>`;
+        }
+    }
+
     async renderTerminal(body) {
         // Initialize terminal session ID if not exists
         if (!this.terminalSessionId) {
@@ -1129,6 +1202,7 @@ class EmbeddoorApp {
             'images': 'Images',
             'heatmap-embedding': 'Heatmap (Embedding)',
             'heatmap-columns': 'Heatmap (Columns)',
+            'correlation': 'Pairwise Correlation',
             'terminal': 'IPython Terminal'
         };
 

@@ -11,7 +11,10 @@ embeddoor/views/
 ├── plot.py              # Plot visualization endpoints
 ├── table.py             # Table visualization endpoints
 ├── wordcloud.py         # Word cloud generation endpoints
-└── images.py            # Image gallery endpoints
+├── images.py            # Image gallery endpoints
+├── heatmap.py           # Heatmap visualization endpoints
+├── correlation.py       # Correlation matrix endpoints
+└── terminal.py          # IPython terminal endpoints
 ```
 
 ## API Endpoints
@@ -165,6 +168,48 @@ Get available image columns.
 {
   "success": true,
   "columns": ["image", "img_path", "photo"]
+}
+```
+
+---
+
+### Correlation View (`correlation.py`)
+
+#### `POST /api/view/correlation/matrix`
+Generate a correlation matrix visualization.
+
+**Request Body:**
+```json
+{
+  "method": "pearson|spearman|kendall",  // Correlation method (default: "pearson")
+  "columns": ["col1", "col2"],           // Optional: Specific columns (defaults to all numeric)
+  "width": 800,                          // Optional: Image width (default: 800)
+  "height": 600                          // Optional: Image height (default: 600)
+}
+```
+
+**Response:** PNG image (image/png)
+
+**Correlation Methods:**
+- `pearson`: Measures linear correlation (default)
+- `spearman`: Measures monotonic relationships (rank-based)
+- `kendall`: Measures ordinal association (tau correlation)
+
+**Features:**
+- Automatically excludes non-numeric columns
+- Ignores the 'selection' column
+- Uses blue colormap for consistency with heatmap views
+- Displays correlation values as text annotations on the matrix
+- Requires at least 2 numeric columns
+
+#### `GET /api/view/correlation/columns/available`
+Get available numeric columns for correlation.
+
+**Response:**
+```json
+{
+  "success": true,
+  "columns": ["value1", "value2", "value3"]
 }
 ```
 

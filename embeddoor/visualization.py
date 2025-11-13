@@ -1008,3 +1008,84 @@ def create_heatmap_columns(df: pd.DataFrame, columns: Optional[List[str]] = None
     
     # Use remove_uids=False and ensure no binary encoding
     return fig.to_json(remove_uids=False, pretty=False, engine='json')
+
+
+def create_correlation_matrix_image(
+    df: pd.DataFrame, 
+    method: str = 'pearson',
+    columns: Optional[List[str]] = None,
+    width: int = 800,
+    height: int = 600
+) -> bytes:
+    """
+    Create a correlation matrix PNG image from numeric columns.
+    
+    Args:
+        df: DataFrame containing the data
+        method: Correlation method ('pearson', 'spearman', 'kendall')
+        columns: List of column names to use (optional, defaults to all numeric)
+        width: Output image width in pixels
+        height: Output image height in pixels
+    
+    Returns:
+        Raw PNG bytes
+    """
+    import matplotlib
+    matplotlib.use('Agg')  # Use non-interactive backend
+    import matplotlib.pyplot as plt
+    
+    # Get numeric columns
+    if columns:
+        numeric_cols = [col for col in columns if col in df.columns and pd.api.types.is_numeric_dtype(df[col])]
+    else:
+        numeric_cols = list(df.select_dtypes(include=[np.number]).columns)
+        # Remove selection column if present
+        if 'selection' in numeric_cols:
+            numeric_cols.remove('selection')
+    
+    if not numeric_cols:
+        raise ValueError("No numeric columns found")
+    
+    if len(numeric_cols) < 2:
+        raise ValueError("At least 2 numeric columns required for correlation matrix")
+    
+    # Extract numeric data
+    numeric_data = df[numeric_cols].copy()
+    
+    # Calculate correlation matrix (ignoring selection - work with all data)
+    corr_matrix = numeric_data.corr(method=method)
+    
+    # Create figure
+    fig, ax = plt.subplots(figsize=(width/100, height/100), dpi=100)
+    
+    # Create heatmap using blue colormap
+    im = ax.imshow(corr_matrix.values, aspect='auto', cmap='Blues', interpolation='nearest', vmin=-1, vmax=1)
+    
+    # Add colorbar
+    cbar = plt.colorbar(im, ax=ax)
+    cbar.set_label(f'{method.capitalize()} Correlation', rotation=270, labelpad=20)
+    
+    # Set title
+    ax.set_title(f'Pairwise Correlation Matrix ({method.capitalize()})')
+    
+    # Set x and y axis labels
+    ax.set_xticks(range(len(numeric_cols)))
+    ax.set_yticks(range(len(numeric_cols)))
+    ax.set_xticklabels(numeric_cols, rotation=45, ha='right', fontsize=8)
+    ax.set_yticklabels(numeric_cols, fontsize=8)
+    
+    # Add correlation values as text annotations
+    for i in range(len(numeric_cols)):
+        for j in range(len(numeric_cols)):
+            text_color = 'white' if corr_matrix.values[i, j] > 0.5 else 'black'
+            text = ax.text(j, i, f'{corr_matrix.values[i, j]:.2f}',
+                         ha="center", va="center", color=text_color, fontsize=7)
+    
+    plt.tight_layout()
+    
+    # Save to buffer
+    buf = BytesIO()
+    plt.savefig(buf, format='PNG', dpi=100, bbox_inches='tight')
+    plt.close(fig)
+    buf.seek(0)
+    return buf.read()

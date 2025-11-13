@@ -10,6 +10,8 @@ A browser-based tool for embedding visualization and analysis.
 - **Interactive data exploration**: Load CSV files, visualize tabular data, and plot 2-3 numerical columns
 - **Advanced plot controls**: Configure hue, size, and shape based on data columns
 - **Lasso selection**: Select data points interactively and store selections in the dataframe
+- **Correlation analysis**: Visualize pairwise correlations with Pearson, Spearman, or Kendall methods
+- **Heatmap visualizations**: View data as heatmaps from embeddings or numeric columns
 - **Modular embedding framework**: Create embeddings using HuggingFace, OpenAI, Gemini, and custom models
 - **Dimensionality reduction**: Apply PCA, t-SNE, and UMAP to high-dimensional embeddings
 - **Data persistence**: Save and load data in Parquet format
