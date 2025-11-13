@@ -248,7 +248,6 @@ class FloatingPanel {
                     <label style="font-size: 12px;">Y: <select class="plot-y-column"></select></label>
                     <label style="font-size: 12px;">Z: <select class="plot-z-column"><option value="">None</option></select></label>
                     <label style="font-size: 12px;">Hue: <select class="plot-hue-column"><option value="">None</option></select></label>
-                    <button class="panel-btn" style="color: #2779cb;" onclick="window.app.getPanel('${this.id}').updatePlot()">Update</button>
                 </div>
             </div>
             <div class="plot-container" style="width: 100%; height: calc(100% - 45px);"></div>
@@ -295,6 +294,12 @@ class FloatingPanel {
         if (this.config.plotHue && (this.config.plotHue === '' || allCols.includes(this.config.plotHue))) {
             hueSelect.value = this.config.plotHue;
         }
+
+        // Add event listeners to automatically update plot when dropdowns change
+        xSelect.addEventListener('change', () => this.updatePlot());
+        ySelect.addEventListener('change', () => this.updatePlot());
+        zSelect.addEventListener('change', () => this.updatePlot());
+        hueSelect.addEventListener('change', () => this.updatePlot());
 
         // Only update plot if we have valid selections
         if (xSelect.value) {
