@@ -40,6 +40,8 @@ class FloatingPanel {
                     <option value="table" ${this.type === 'table' ? 'selected' : ''}>Table</option>
                     <option value="wordcloud" ${this.type === 'wordcloud' ? 'selected' : ''}>Word Cloud</option>
                     <option value="images" ${this.type === 'images' ? 'selected' : ''}>Images</option>
+                    <option value="heatmap-embedding" ${this.type === 'heatmap-embedding' ? 'selected' : ''}>Heatmap (Embedding)</option>
+                    <option value="heatmap-columns" ${this.type === 'heatmap-columns' ? 'selected' : ''}>Heatmap (Columns)</option>
                     <option value="terminal" ${this.type === 'terminal' ? 'selected' : ''}>IPython Terminal</option>
                 </select>
                 <button class="panel-btn" data-action="minimize" title="Minimize">−</button>
@@ -173,6 +175,8 @@ class FloatingPanel {
             'table': 'Table',
             'wordcloud': 'Word Cloud',
             'images': 'Images',
+            'heatmap-embedding': 'Heatmap (Embedding)',
+            'heatmap-columns': 'Heatmap (Columns)',
             'terminal': 'IPython Terminal'
         };
         
@@ -205,6 +209,12 @@ class FloatingPanel {
                     break;
                 case 'images':
                     await this.renderImages(body);
+                    break;
+                case 'heatmap-embedding':
+                    await this.renderHeatmapEmbedding(body);
+                    break;
+                case 'heatmap-columns':
+                    await this.renderHeatmapColumns(body);
                     break;
                 case 'terminal':
                     await this.renderTerminal(body);
@@ -556,6 +566,146 @@ class FloatingPanel {
                 });
             } else {
                 container.innerHTML = `<p class="placeholder">No images found</p>`;
+            }
+        } catch (error) {
+            container.innerHTML = `<p class="placeholder">Error: ${error.message}</p>`;
+        }
+    }
+
+    async renderHeatmapEmbedding(body) {
+        body.innerHTML = `
+            <div style="padding: 8px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <label style="font-size: 12px;">Embedding Column: <select class="heatmap-embedding-column"></select></label>
+                    <button class="panel-btn" style="color: #2779cb;" onclick="window.app.getPanel('${this.id}').updateHeatmapEmbedding()">Update</button>
+                </div>
+            </div>
+            <div class="heatmap-container" style="width: 100%; height: calc(100% - 45px);"></div>
+        `;
+
+        // Populate embedding column selector
+        const embeddingSelect = body.querySelector('.heatmap-embedding-column');
+        try {
+            const response = await fetch('/api/view/heatmap/embedding/columns');
+            if (response.ok) {
+                const data = await response.json();
+                const embeddingCols = data.columns || [];
+                
+                if (embeddingCols.length === 0) {
+                    body.querySelector('.heatmap-container').innerHTML = '<p class="placeholder">No embedding columns found (columns with "embedding" in name)</p>';
+                    return;
+                }
+
+                embeddingCols.forEach(col => {
+                    embeddingSelect.add(new Option(col, col));
+                });
+
+                // Set default and auto-generate
+                if (this.config.embeddingColumn && embeddingCols.includes(this.config.embeddingColumn)) {
+                    embeddingSelect.value = this.config.embeddingColumn;
+                } else {
+                    embeddingSelect.value = embeddingCols[0];
+                    this.config.embeddingColumn = embeddingCols[0];
+                }
+                
+                await this.updateHeatmapEmbedding();
+            }
+        } catch (error) {
+            body.querySelector('.heatmap-container').innerHTML = `<p class="placeholder">Error loading columns: ${error.message}</p>`;
+        }
+
+        embeddingSelect.addEventListener('change', () => {
+            this.config.embeddingColumn = embeddingSelect.value;
+        });
+    }
+
+    async updateHeatmapEmbedding() {
+        const body = this.element.querySelector('.panel-body');
+        const embeddingSelect = body.querySelector('.heatmap-embedding-column');
+        const container = body.querySelector('.heatmap-container');
+        
+        const embeddingColumn = embeddingSelect?.value;
+        if (!embeddingColumn) return;
+
+        container.innerHTML = '<p class="placeholder">Generating heatmap...</p>';
+
+        try {
+            const response = await fetch('/api/view/heatmap/embedding', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    embedding_column: embeddingColumn,
+                    width: container.clientWidth || 800,
+                    height: container.clientHeight || 600
+                })
+            });
+
+            if (response.ok) {
+                // Check if response is an image
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('image')) {
+                    const blob = await response.blob();
+                    const imageUrl = URL.createObjectURL(blob);
+                    container.innerHTML = `<img src="${imageUrl}" style="width: 100%; height: 100%; object-fit: contain;" />`;
+                } else {
+                    const error = await response.json();
+                    container.innerHTML = `<p class="placeholder">Error: ${error.error || 'Unknown error'}</p>`;
+                }
+            } else {
+                const error = await response.json();
+                container.innerHTML = `<p class="placeholder">Error: ${error.error}</p>`;
+            }
+        } catch (error) {
+            console.error('Error in updateHeatmapEmbedding:', error);
+            container.innerHTML = `<p class="placeholder">Error: ${error.message}</p>`;
+        }
+    }
+
+    async renderHeatmapColumns(body) {
+        body.innerHTML = `
+            <div style="padding: 8px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button class="panel-btn" style="color: #2779cb;" onclick="window.app.getPanel('${this.id}').updateHeatmapColumns()">Update</button>
+                    <span style="font-size: 12px; color: #666;">Shows all numeric columns normalized 0-1</span>
+                </div>
+            </div>
+            <div class="heatmap-container" style="width: 100%; height: calc(100% - 45px);"></div>
+        `;
+
+        // Auto-generate on initial render
+        await this.updateHeatmapColumns();
+    }
+
+    async updateHeatmapColumns() {
+        const body = this.element.querySelector('.panel-body');
+        const container = body.querySelector('.heatmap-container');
+        
+        container.innerHTML = '<p class="placeholder">Generating heatmap...</p>';
+
+        try {
+            const response = await fetch('/api/view/heatmap/columns', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    width: container.clientWidth || 800,
+                    height: container.clientHeight || 600
+                })
+            });
+
+            if (response.ok) {
+                // Check if response is an image
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('image')) {
+                    const blob = await response.blob();
+                    const imageUrl = URL.createObjectURL(blob);
+                    container.innerHTML = `<img src="${imageUrl}" style="width: 100%; height: 100%; object-fit: contain;" />`;
+                } else {
+                    const error = await response.json();
+                    container.innerHTML = `<p class="placeholder">Error: ${error.error || 'Unknown error'}</p>`;
+                }
+            } else {
+                const error = await response.json();
+                container.innerHTML = `<p class="placeholder">Error: ${error.error}</p>`;
             }
         } catch (error) {
             container.innerHTML = `<p class="placeholder">Error: ${error.message}</p>`;
