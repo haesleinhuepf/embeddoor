@@ -371,6 +371,8 @@ class FloatingPanel {
         } catch (error) {
             console.error('Error updating plot:', error);
         }
+            // Ensure plot is properly sized after redraw
+            this.resizePlot();
     }
 
     async saveSelection() {
