@@ -3,6 +3,7 @@
 import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
+import numpy as np
 from typing import Optional, List, Dict, Any, Iterable
 from io import BytesIO
 
@@ -466,3 +467,293 @@ def create_wordcloud_image(
     image.save(buf, format='PNG')
     buf.seek(0)
     return buf.read()
+
+
+def create_heatmap_embedding(df: pd.DataFrame, embedding_column: str) -> str:
+    """
+    Create a heatmap from an embedding column.
+    
+    Args:
+        df: DataFrame containing the data
+        embedding_column: Column name containing embedding vectors
+    
+    Returns:
+        JSON string of the Plotly figure
+    """
+    # Check if selection column exists
+    has_selection = 'selection' in df.columns
+    
+    # Extract embeddings
+    embeddings = []
+    row_labels = []
+    selected_mask = []
+    
+    for idx, row in df.iterrows():
+        try:
+            # Get embedding value
+            emb = row[embedding_column]
+            
+            # Convert to list if needed
+            if isinstance(emb, str):
+                # Try to parse as list/array
+                import ast
+                try:
+                    emb = ast.literal_eval(emb)
+                except:
+                    continue
+            elif isinstance(emb, np.ndarray):
+                emb = emb.tolist()
+            elif not isinstance(emb, list):
+                continue
+            
+            embeddings.append(emb)
+            row_labels.append(str(idx))
+            
+            # Check selection status
+            if has_selection:
+                is_selected = row.get('selection', 0) in [1, True, '1', 'True', 'true']
+                selected_mask.append(is_selected)
+            else:
+                selected_mask.append(False)
+        except Exception as e:
+            print(f"Error processing row {idx}: {e}")
+            continue
+    
+    if not embeddings:
+        raise ValueError("No valid embeddings found")
+    
+    # Convert to numpy array
+    embeddings_array = np.array(embeddings)
+    
+    # Create figure with single heatmap
+    fig = go.Figure()
+    
+    # For rows with selection, we'll apply color masking by creating custom colorscale
+    if has_selection and any(selected_mask):
+        # Create separate heatmaps for selected and unselected
+        # We need to handle this by creating custom row annotations or using subplots
+        # For simplicity, we'll color code using y-axis text color and add visual separator
+        
+        # Reorder data: unselected first, then selected
+        unselected_indices = [i for i, sel in enumerate(selected_mask) if not sel]
+        selected_indices = [i for i, sel in enumerate(selected_mask) if sel]
+        
+        new_order = unselected_indices + selected_indices
+        reordered_data = embeddings_array[new_order]
+        reordered_labels = [row_labels[i] for i in new_order]
+        reordered_selection = [selected_mask[i] for i in new_order]
+        
+        # Create custom colorscale that blends blue and orange
+        # We'll use a workaround: normalize data and add offset for selected rows
+        normalized_data = reordered_data.copy()
+        
+        # Scale selected rows differently to use orange color range
+        for i, is_selected in enumerate(reordered_selection):
+            if is_selected:
+                # Add offset to selected rows to map to orange part of colorscale
+                normalized_data[i] = normalized_data[i] + embeddings_array.max() + 1
+        
+        # Create a custom colorscale with blue for lower values and orange for higher
+        data_min = embeddings_array.min()
+        data_max = embeddings_array.max()
+        data_range = data_max - data_min if data_max > data_min else 1
+        offset = data_max + 1
+        
+        # Colorscale: blue range [0, 0.5], orange range [0.5, 1.0]
+        colorscale = [
+            [0.0, 'rgb(255, 255, 255)'],      # white (min blue)
+            [0.49, 'rgb(31, 119, 180)'],      # matplotlib blue (max blue)
+            [0.51, 'rgb(255, 255, 255)'],     # white (min orange)
+            [1.0, 'rgb(255, 127, 14)']        # matplotlib orange (max orange)
+        ]
+        
+        fig.add_trace(go.Heatmap(
+            z=normalized_data,
+            y=reordered_labels,
+            x=list(range(reordered_data.shape[1])),
+            colorscale=colorscale,
+            showscale=False,  # Hide scale since values are modified
+            hovertemplate='Row: %{y}<br>Dimension: %{x}<br>Value: %{z:.4f}<extra></extra>',
+            zauto=False,
+            zmin=data_min,
+            zmax=offset + data_range
+        ))
+        
+        # Add annotation to indicate color coding
+        fig.add_annotation(
+            text=f"Blue: Unselected ({len(unselected_indices)}) | Orange: Selected ({len(selected_indices)})",
+            xref="paper", yref="paper",
+            x=0.5, y=1.05,
+            showarrow=False,
+            font=dict(size=12)
+        )
+    else:
+        # No selection, use simple blue colorscale
+        colorscale_blue = [
+            [0.0, 'rgb(255, 255, 255)'],  # white
+            [1.0, 'rgb(31, 119, 180)']     # matplotlib blue
+        ]
+        
+        fig.add_trace(go.Heatmap(
+            z=embeddings_array,
+            y=row_labels,
+            x=list(range(embeddings_array.shape[1])),
+            colorscale=colorscale_blue,
+            showscale=True,
+            hovertemplate='Row: %{y}<br>Dimension: %{x}<br>Value: %{z:.4f}<extra></extra>'
+        ))
+    
+    fig.update_layout(
+        title=f'Embedding Heatmap: {embedding_column}',
+        xaxis_title='Embedding Dimension',
+        yaxis_title='Row Index',
+        height=max(400, min(1200, len(row_labels) * 20)),
+        xaxis=dict(autorange=True),
+        yaxis=dict(autorange=True),
+        hovermode='closest'
+    )
+    
+    fig.write_html("debug_plot2.html")
+
+    return fig.to_json()
+
+
+def create_heatmap_columns(df: pd.DataFrame, columns: Optional[List[str]] = None) -> str:
+    """
+    Create a heatmap from numeric columns.
+    
+    Args:
+        df: DataFrame containing the data
+        columns: List of column names to use (optional, defaults to all numeric)
+    
+    Returns:
+        JSON string of the Plotly figure
+    """
+    # Check if selection column exists
+    has_selection = 'selection' in df.columns
+    
+    # Get numeric columns
+    if columns:
+        numeric_cols = [col for col in columns if col in df.columns and pd.api.types.is_numeric_dtype(df[col])]
+    else:
+        numeric_cols = list(df.select_dtypes(include=[np.number]).columns)
+        # Remove selection column if present
+        if 'selection' in numeric_cols:
+            numeric_cols.remove('selection')
+    
+    if not numeric_cols:
+        raise ValueError("No numeric columns found")
+    
+    # Extract numeric data
+    numeric_data = df[numeric_cols].copy()
+    
+    # Normalize each column to 0-1
+    for col in numeric_cols:
+        col_min = numeric_data[col].min()
+        col_max = numeric_data[col].max()
+        if col_max > col_min:
+            numeric_data[col] = (numeric_data[col] - col_min) / (col_max - col_min)
+        else:
+            numeric_data[col] = 0.0
+    
+    # Convert to numpy array
+    data_array = numeric_data.values
+    row_labels = [str(idx) for idx in df.index]
+    
+    # Create figure
+    fig = go.Figure()
+    
+    # Check for selection
+    if has_selection:
+        selected_mask = df['selection'].isin([1, True, '1', 'True', 'true']).values
+        
+        if any(selected_mask):
+            # Reorder data: unselected first, then selected
+            unselected_indices = [i for i, sel in enumerate(selected_mask) if not sel]
+            selected_indices = [i for i, sel in enumerate(selected_mask) if sel]
+            
+            new_order = unselected_indices + selected_indices
+            reordered_data = data_array[new_order]
+            reordered_labels = [row_labels[i] for i in new_order]
+            reordered_selection = [selected_mask[i] for i in new_order]
+            
+            # Create custom colorscale with offset for selected rows
+            normalized_data = reordered_data.copy()
+            
+            # Add offset to selected rows (shift to orange color range)
+            for i, is_selected in enumerate(reordered_selection):
+                if is_selected:
+                    normalized_data[i] = normalized_data[i] + 1.1  # offset beyond [0,1] range
+            
+            # Colorscale: blue range [0, 0.5], orange range [0.5, 1.0]
+            colorscale = [
+                [0.0, 'rgb(255, 255, 255)'],      # white (min blue)
+                [0.45, 'rgb(31, 119, 180)'],      # matplotlib blue (max blue)
+                [0.55, 'rgb(255, 255, 255)'],     # white (min orange)
+                [1.0, 'rgb(255, 127, 14)']        # matplotlib orange (max orange)
+            ]
+            
+            fig.add_trace(go.Heatmap(
+                z=normalized_data,
+                y=reordered_labels,
+                x=numeric_cols,
+                colorscale=colorscale,
+                showscale=False,  # Hide scale since values are modified
+                hovertemplate='Row: %{y}<br>Column: %{x}<br>Normalized Value: %{z:.4f}<extra></extra>',
+                zauto=False,
+                zmin=0,
+                zmax=2.1
+            ))
+            
+            # Add annotation to indicate color coding
+            fig.add_annotation(
+                text=f"Blue: Unselected ({len(unselected_indices)}) | Orange: Selected ({len(selected_indices)})",
+                xref="paper", yref="paper",
+                x=0.5, y=1.05,
+                showarrow=False,
+                font=dict(size=12)
+            )
+        else:
+            # No selected rows, use blue for all
+            colorscale_blue = [
+                [0.0, 'rgb(255, 255, 255)'],  # white
+                [1.0, 'rgb(31, 119, 180)']     # matplotlib blue
+            ]
+            
+            fig.add_trace(go.Heatmap(
+                z=data_array,
+                y=row_labels,
+                x=numeric_cols,
+                colorscale=colorscale_blue,
+                showscale=True,
+                hovertemplate='Row: %{y}<br>Column: %{x}<br>Normalized Value: %{z:.4f}<extra></extra>',
+                zmin=0,
+                zmax=1
+            ))
+    else:
+        # No selection column, use blue for all
+        colorscale_blue = [
+            [0.0, 'rgb(255, 255, 255)'],  # white
+            [1.0, 'rgb(31, 119, 180)']     # matplotlib blue
+        ]
+        
+        fig.add_trace(go.Heatmap(
+            z=data_array,
+            y=row_labels,
+            x=numeric_cols,
+            colorscale=colorscale_blue,
+            showscale=True,
+            hovertemplate='Row: %{y}<br>Column: %{x}<br>Normalized Value: %{z:.4f}<extra></extra>',
+            zmin=0,
+            zmax=1
+        ))
+    
+    fig.update_layout(
+        title='Normalized Column Heatmap',
+        xaxis_title='Column',
+        yaxis_title='Row Index',
+        height=max(400, min(1200, len(row_labels) * 20)),
+        hovermode='closest'
+    )
+    
+    return fig.to_json()

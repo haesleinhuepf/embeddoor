@@ -58,6 +58,10 @@ Available variables:
   - np: numpy module
 
 Try: data.head(), data.describe(), data.shape
+
+🤖 AI Assistant:
+  Type "bob <your request>" to get AI-generated Python code
+  Example: bob show first 10 rows sorted by price
 """
                 return jsonify({
                     'success': True,
