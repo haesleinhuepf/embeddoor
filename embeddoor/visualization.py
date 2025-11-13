@@ -84,32 +84,59 @@ def create_plot(
         
         # Group by hue if specified
         if hue_col:
-            for hue_value in df[hue_col].unique():
-                mask = df[hue_col] == hue_value
-                subset = df[mask].reset_index(drop=True)
-                subset_indices = indices[mask].reset_index(drop=True)
-                
-                # Prepare marker settings
-                marker_dict = {'size': 5}
-                if size_col:
-                    marker_dict['size'] = subset[size_col].tolist()
-                
-                fig.add_trace(go.Scatter3d(
-                    x=subset[x_col].tolist(),
-                    y=subset[y_col].tolist(),
-                    z=subset[z_col].tolist(),
-                    mode='markers',
-                    name=str(hue_value),
-                    marker=marker_dict,
-                    text=subset_indices.tolist(),
-                    hovertemplate=(
-                        f'<b>Index: %{{text}}</b><br>'
-                        f'{x_col}: %{{x}}<br>'
-                        f'{y_col}: %{{y}}<br>'
-                        f'{z_col}: %{{z}}<br>'
-                        '<extra></extra>'
-                    )
-                ))
+            # If selection exists, draw selected points first with orange rings
+            if has_selection:
+                selected_mask = df['selection'] == True
+                if selected_mask.any():
+                    selected = df[selected_mask].reset_index(drop=True)
+                    selected_indices = indices[selected_mask].reset_index(drop=True)
+                    
+                    # Draw orange rings (larger size, no fill)
+                    ring_size = 8 if not size_col else [s * 1.5 for s in selected[size_col].tolist()]
+                    
+                    fig.add_trace(go.Scatter3d(
+                        x=selected[x_col].tolist(),
+                        y=selected[y_col].tolist(),
+                        z=selected[z_col].tolist(),
+                        mode='markers',
+                        marker=dict(
+                            size=ring_size,
+                            color='rgba(0,0,0,0)',  # Transparent fill
+                            line=dict(color='#ff7f0e', width=2)  # Orange ring
+                        ),
+                        text=selected_indices.tolist(),
+                        showlegend=False,
+                        hoverinfo='skip'  # Don't show hover for rings
+                    ))
+            
+            # Use continuous colorscale for hue (draw on top)
+            marker_dict = {
+                'size': 5,
+                'color': df[hue_col].tolist(),
+                'colorscale': 'Viridis',
+                'showscale': True,
+                'colorbar': dict(title=hue_col)
+            }
+            if size_col:
+                marker_dict['size'] = df[size_col].tolist()
+            
+            fig.add_trace(go.Scatter3d(
+                x=df[x_col].tolist(),
+                y=df[y_col].tolist(),
+                z=df[z_col].tolist(),
+                mode='markers',
+                marker=marker_dict,
+                text=indices.tolist(),
+                hovertemplate=(
+                    f'<b>Index: %{{text}}</b><br>'
+                    f'{x_col}: %{{x}}<br>'
+                    f'{y_col}: %{{y}}<br>'
+                    f'{z_col}: %{{z}}<br>'
+                    f'{hue_col}: %{{marker.color}}<br>'
+                    '<extra></extra>'
+                ),
+                showlegend=False
+            ))
         elif has_selection:
             # Split data into selected and unselected
             selected_mask = df['selection'] == True
@@ -210,29 +237,56 @@ def create_plot(
         has_selection = 'selection' in df.columns
         
         if hue_col:
-            for hue_value in df[hue_col].unique():
-                mask = df[hue_col] == hue_value
-                subset = df[mask].reset_index(drop=True)
-                subset_indices = indices[mask].reset_index(drop=True)
-                
-                marker_dict = {'size': 8}
-                if size_col:
-                    marker_dict['size'] = subset[size_col].tolist()
-                
-                fig.add_trace(go.Scatter(
-                    x=subset[x_col].tolist(),
-                    y=subset[y_col].tolist(),
-                    mode='markers',
-                    name=str(hue_value),
-                    marker=marker_dict,
-                    text=subset_indices.tolist(),
-                    hovertemplate=(
-                        f'<b>Index: %{{text}}</b><br>'
-                        f'{x_col}: %{{x}}<br>'
-                        f'{y_col}: %{{y}}<br>'
-                        '<extra></extra>'
-                    )
-                ))
+            # If selection exists, draw selected points first with orange rings
+            if has_selection:
+                selected_mask = df['selection'] == True
+                if selected_mask.any():
+                    selected = df[selected_mask].reset_index(drop=True)
+                    selected_indices = indices[selected_mask].reset_index(drop=True)
+                    
+                    # Draw orange rings (larger size, no fill)
+                    ring_size = 12 if not size_col else [s * 1.5 for s in selected[size_col].tolist()]
+                    
+                    fig.add_trace(go.Scatter(
+                        x=selected[x_col].tolist(),
+                        y=selected[y_col].tolist(),
+                        mode='markers',
+                        marker=dict(
+                            size=ring_size,
+                            color='rgba(0,0,0,0)',  # Transparent fill
+                            line=dict(color='#ff7f0e', width=2)  # Orange ring
+                        ),
+                        text=selected_indices.tolist(),
+                        showlegend=False,
+                        hoverinfo='skip'  # Don't show hover for rings
+                    ))
+            
+            # Use continuous colorscale for hue (draw on top)
+            marker_dict = {
+                'size': 8,
+                'color': df[hue_col].tolist(),
+                'colorscale': 'Viridis',
+                'showscale': True,
+                'colorbar': dict(title=hue_col)
+            }
+            if size_col:
+                marker_dict['size'] = df[size_col].tolist()
+            
+            fig.add_trace(go.Scatter(
+                x=df[x_col].tolist(),
+                y=df[y_col].tolist(),
+                mode='markers',
+                marker=marker_dict,
+                text=indices.tolist(),
+                hovertemplate=(
+                    f'<b>Index: %{{text}}</b><br>'
+                    f'{x_col}: %{{x}}<br>'
+                    f'{y_col}: %{{y}}<br>'
+                    f'{hue_col}: %{{marker.color}}<br>'
+                    '<extra></extra>'
+                ),
+                showlegend=False
+            ))
         elif has_selection:
             # Split data into selected and unselected
             selected_mask = df['selection'] == True
