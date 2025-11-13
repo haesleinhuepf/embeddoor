@@ -789,13 +789,68 @@ class FloatingPanel {
     async renderRidgeplot(body) {
         body.innerHTML = `
             <div style="padding: 8px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
-                <div style="display: flex; gap: 8px; align-items: center;">
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                     <button class="panel-btn" style="color: #2779cb;" onclick="window.app.getPanel('${this.id}').updateRidgeplot()">Update</button>
-                    <span style="font-size: 12px; color: #666;">Ridgeplot of all numeric columns. If a selection exists, orange = selected, blue = unselected.</span>
+                    <label style="font-size: 12px; color: #666;">Columns:</label>
+                    <div class="ridgeplot-checkboxes" style="max-height: 120px; overflow: auto; border: 1px solid #ddd; border-radius: 4px; padding: 6px; min-width: 240px; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px;"></div>
+                    <button class="panel-btn ridgeplot-select-all" title="Select all columns">Select all</button>
+                    <span style="font-size: 12px; color: #666;">Ridgeplot of selected numeric columns (default: all). If a selection exists, orange = selected, blue = unselected.</span>
                 </div>
             </div>
             <div class="ridgeplot-container" style="width: 100%; height: calc(100% - 45px);"></div>
         `;
+
+        const checkboxContainer = body.querySelector('.ridgeplot-checkboxes');
+        const selectAllBtn = body.querySelector('.ridgeplot-select-all');
+
+        // Populate available numeric columns
+        try {
+            const res = await fetch('/api/view/ridgeplot/columns/available');
+            const json = await res.json();
+            if (json && json.success && Array.isArray(json.columns)) {
+                const cols = json.columns;
+                // Determine initial selection: previous selection or all
+                const prev = Array.isArray(this.config.ridgeColumns) ? this.config.ridgeColumns : null;
+                const initial = prev && prev.length ? prev.filter(c => cols.includes(c)) : cols;
+                this.config.ridgeColumns = [...initial];
+
+                // Render checkboxes
+                checkboxContainer.innerHTML = '';
+                cols.forEach(c => {
+                    const id = `ridge-${this.id}-${c}`;
+                    const wrapper = document.createElement('label');
+                    wrapper.style.display = 'flex';
+                    wrapper.style.alignItems = 'center';
+                    wrapper.style.gap = '6px';
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = c;
+                    cb.id = id;
+                    cb.checked = initial.includes(c);
+                    cb.addEventListener('change', () => {
+                        const selected = [...checkboxContainer.querySelectorAll('input[type="checkbox"]:checked')].map(el => el.value);
+                        this.config.ridgeColumns = selected;
+                        this.updateRidgeplot();
+                    });
+                    const span = document.createElement('span');
+                    span.textContent = c;
+                    wrapper.appendChild(cb);
+                    wrapper.appendChild(span);
+                    checkboxContainer.appendChild(wrapper);
+                });
+
+                // Select all handler
+                selectAllBtn.addEventListener('click', () => {
+                    const boxes = [...checkboxContainer.querySelectorAll('input[type="checkbox"]')];
+                    boxes.forEach(b => { b.checked = true; });
+                    this.config.ridgeColumns = cols.slice();
+                    this.updateRidgeplot();
+                });
+            }
+        } catch (e) {
+            // If fetching columns fails, we still render with backend defaults
+            console.warn('Failed to fetch ridgeplot columns:', e);
+        }
 
         await this.updateRidgeplot();
     }
@@ -803,8 +858,20 @@ class FloatingPanel {
     async updateRidgeplot() {
         const body = this.element.querySelector('.panel-body');
         const container = body.querySelector('.ridgeplot-container');
+    const checkboxContainer = body.querySelector('.ridgeplot-checkboxes');
 
         container.innerHTML = '<p class="placeholder">Generating ridgeplot...</p>';
+
+        // Determine selected columns; default to all when not specified
+        let selectedColumns = null;
+        if (checkboxContainer) {
+            selectedColumns = [...checkboxContainer.querySelectorAll('input[type="checkbox"]:checked')].map(el => el.value);
+            if (!selectedColumns.length && Array.isArray(this.config.ridgeColumns) && this.config.ridgeColumns.length) {
+                selectedColumns = this.config.ridgeColumns;
+            }
+        } else if (Array.isArray(this.config.ridgeColumns) && this.config.ridgeColumns.length) {
+            selectedColumns = this.config.ridgeColumns;
+        }
 
         try {
             const response = await fetch('/api/view/ridgeplot/numeric', {
@@ -814,7 +881,9 @@ class FloatingPanel {
                     width: container.clientWidth || 800,
                     height: container.clientHeight || 600,
                     bins: 200,
-                    overlap: 0.75
+                    overlap: 0.75,
+                    // Pass columns only if we have an explicit selection; backend defaults to all otherwise
+                    ...(selectedColumns && selectedColumns.length ? { columns: selectedColumns } : {})
                 })
             });
 

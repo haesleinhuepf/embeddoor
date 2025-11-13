@@ -1220,24 +1220,30 @@ def create_ridgeplot_numeric_columns_image(
     if not numeric_cols:
         raise ValueError("No numeric columns found")
 
-    # Compute global min/max across all selected numeric columns for shared x-axis
+
+    # Normalize each column to 0-1 before plotting
+    normed_df = df.copy()
     col_mins = []
     col_maxs = []
     for col in numeric_cols:
         series = pd.to_numeric(df[col], errors='coerce').dropna()
         if series.empty:
             continue
-        col_mins.append(series.min())
-        col_maxs.append(series.max())
+        min_val = series.min()
+        max_val = series.max()
+        col_mins.append(0.0)
+        col_maxs.append(1.0)
+        # Normalize column in the copy
+        if max_val > min_val:
+            normed_df[col] = (df[col] - min_val) / (max_val - min_val)
+        else:
+            normed_df[col] = 0.0  # If constant, set to 0
     if not col_mins:
         raise ValueError("No valid numeric data to plot")
-    global_min = float(np.min(col_mins))
-    global_max = float(np.max(col_maxs))
-    if not np.isfinite(global_min) or not np.isfinite(global_max) or global_min == global_max:
-        # Fallback range
-        global_min, global_max = 0.0, 1.0
+    global_min = 0.0
+    global_max = 1.0
 
-    # X grid for density estimation
+    # X grid for density estimation (normalized)
     x = np.linspace(global_min, global_max, bins)
 
     # Simple Gaussian kernel for smoothing hist densities (no SciPy dependency)
@@ -1298,7 +1304,7 @@ def create_ridgeplot_numeric_columns_image(
     max_dens = 1e-9
     precomputed = {}
     for col in numeric_cols:
-        values_all = pd.to_numeric(df[col], errors='coerce').dropna().values
+        values_all = pd.to_numeric(normed_df[col], errors='coerce').dropna().values
         if values_all.size == 0:
             dens_all = np.zeros_like(x)
         else:
@@ -1310,8 +1316,8 @@ def create_ridgeplot_numeric_columns_image(
                 sel_mask = df['selection'].isin([1, True, '1', 'True', 'true'])
             else:
                 sel_mask = df['selection']
-            values_sel = pd.to_numeric(df.loc[sel_mask, col], errors='coerce').dropna().values
-            values_uns = pd.to_numeric(df.loc[~sel_mask, col], errors='coerce').dropna().values
+            values_sel = pd.to_numeric(normed_df.loc[sel_mask, col], errors='coerce').dropna().values
+            values_uns = pd.to_numeric(normed_df.loc[~sel_mask, col], errors='coerce').dropna().values
             dens_sel = smooth_hist(values_sel) if values_sel.size > 0 else np.zeros_like(x)
             dens_uns = smooth_hist(values_uns) if values_uns.size > 0 else np.zeros_like(x)
             max_dens = max(max_dens, float(dens_sel.max()), float(dens_uns.max()))
@@ -1344,7 +1350,7 @@ def create_ridgeplot_numeric_columns_image(
     ax.set_yticks(y_positions)
     ax.set_yticklabels(numeric_cols, fontsize=9)
     ax.set_xlim(global_min, global_max)
-    ax.set_xlabel('Value')
+    ax.set_xlabel('Normalized value (0–1)')
     ax.set_title('Ridgeplot of Numeric Columns' + (' (Orange: Selected, Blue: Unselected)' if has_selection and any_selected else ''))
     ax.grid(axis='x', alpha=0.2)
 
