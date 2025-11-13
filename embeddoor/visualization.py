@@ -568,7 +568,7 @@ def create_heatmap_embedding(df: pd.DataFrame, embedding_column: str) -> str:
         ]
         
         fig.add_trace(go.Heatmap(
-            z=normalized_data,
+            z=normalized_data.tolist(),
             y=reordered_labels,
             x=list(range(reordered_data.shape[1])),
             colorscale=colorscale,
@@ -588,35 +588,43 @@ def create_heatmap_embedding(df: pd.DataFrame, embedding_column: str) -> str:
             font=dict(size=12)
         )
     else:
+        print("A", array2d_to_list(embeddings_array))
         # No selection, use simple blue colorscale
         colorscale_blue = [
             [0.0, 'rgb(255, 255, 255)'],  # white
             [1.0, 'rgb(31, 119, 180)']     # matplotlib blue
         ]
-        
         fig.add_trace(go.Heatmap(
-            z=embeddings_array,
+            z=array2d_to_list(embeddings_array),
             y=row_labels,
             x=list(range(embeddings_array.shape[1])),
             colorscale=colorscale_blue,
             showscale=True,
             hovertemplate='Row: %{y}<br>Dimension: %{x}<br>Value: %{z:.4f}<extra></extra>'
         ))
+        print("A-")
     
     fig.update_layout(
         title=f'Embedding Heatmap: {embedding_column}',
         xaxis_title='Embedding Dimension',
         yaxis_title='Row Index',
-        height=max(400, min(1200, len(row_labels) * 20)),
+        hovermode='closest',
         xaxis=dict(autorange=True),
         yaxis=dict(autorange=True),
-        hovermode='closest'
+        margin=dict(l=80, r=40, t=40, b=60),
+        autosize=True
     )
     
+    print("xaxis", fig.layout.xaxis)
+    print("xaxis.range", fig.layout.xaxis.range)
+
     fig.write_html("debug_plot2.html")
 
     return fig.to_json()
 
+
+def array2d_to_list(arr: Any):
+    return [[x.item() if hasattr(x, "item") else x for x in row] for row in arr]
 
 def create_heatmap_columns(df: pd.DataFrame, columns: Optional[List[str]] = None) -> str:
     """
@@ -752,8 +760,9 @@ def create_heatmap_columns(df: pd.DataFrame, columns: Optional[List[str]] = None
         title='Normalized Column Heatmap',
         xaxis_title='Column',
         yaxis_title='Row Index',
-        height=max(400, min(1200, len(row_labels) * 20)),
-        hovermode='closest'
+        hovermode='closest',
+        autosize=True
     )
     
-    return fig.to_json()
+    # Use remove_uids=False and ensure no binary encoding
+    return fig.to_json(remove_uids=False, pretty=False, engine='json')

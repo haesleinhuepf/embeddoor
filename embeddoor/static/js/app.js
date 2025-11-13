@@ -649,11 +649,14 @@ class FloatingPanel {
                 })
             });
 
+            console.log('Heatmap embedding response:', response);
+
             if (response.ok) {
                 const result = await response.json();
                 if (result.success && result.plot) {
                     const plotData = JSON.parse(result.plot);
                     Plotly.newPlot(container, plotData.data, plotData.layout, { responsive: true });
+                    
                 } else {
                     container.innerHTML = `<p class="placeholder">Error: ${result.error || 'Unknown error'}</p>`;
                 }
@@ -662,6 +665,7 @@ class FloatingPanel {
                 container.innerHTML = `<p class="placeholder">Error: ${error.error}</p>`;
             }
         } catch (error) {
+            console.error('Error in updateHeatmapEmbedding:', error);
             container.innerHTML = `<p class="placeholder">Error: ${error.message}</p>`;
         }
     }
@@ -711,6 +715,7 @@ class FloatingPanel {
                 if (result.success && result.plot) {
                     const plotData = JSON.parse(result.plot);
                     Plotly.newPlot(container, plotData.data, plotData.layout, { responsive: true });
+                    container.innerHTML = ""
                 } else {
                     container.innerHTML = `<p class="placeholder">Error: ${result.error || 'Unknown error'}</p>`;
                 }
