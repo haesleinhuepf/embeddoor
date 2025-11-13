@@ -634,20 +634,22 @@ class FloatingPanel {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    embedding_column: embeddingColumn
+                    embedding_column: embeddingColumn,
+                    width: container.clientWidth || 800,
+                    height: container.clientHeight || 600
                 })
             });
 
-            console.log('Heatmap embedding response:', response);
-
             if (response.ok) {
-                const result = await response.json();
-                if (result.success && result.plot) {
-                    const plotData = JSON.parse(result.plot);
-                    Plotly.newPlot(container, plotData.data, plotData.layout, { responsive: true });
-                    
+                // Check if response is an image
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('image')) {
+                    const blob = await response.blob();
+                    const imageUrl = URL.createObjectURL(blob);
+                    container.innerHTML = `<img src="${imageUrl}" style="width: 100%; height: 100%; object-fit: contain;" />`;
                 } else {
-                    container.innerHTML = `<p class="placeholder">Error: ${result.error || 'Unknown error'}</p>`;
+                    const error = await response.json();
+                    container.innerHTML = `<p class="placeholder">Error: ${error.error || 'Unknown error'}</p>`;
                 }
             } else {
                 const error = await response.json();
@@ -683,17 +685,23 @@ class FloatingPanel {
         try {
             const response = await fetch('/api/view/heatmap/columns', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    width: container.clientWidth || 800,
+                    height: container.clientHeight || 600
+                })
             });
 
             if (response.ok) {
-                const result = await response.json();
-                if (result.success && result.plot) {
-                    const plotData = JSON.parse(result.plot);
-                    Plotly.newPlot(container, plotData.data, plotData.layout, { responsive: true });
-                    container.innerHTML = ""
+                // Check if response is an image
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('image')) {
+                    const blob = await response.blob();
+                    const imageUrl = URL.createObjectURL(blob);
+                    container.innerHTML = `<img src="${imageUrl}" style="width: 100%; height: 100%; object-fit: contain;" />`;
                 } else {
-                    container.innerHTML = `<p class="placeholder">Error: ${result.error || 'Unknown error'}</p>`;
+                    const error = await response.json();
+                    container.innerHTML = `<p class="placeholder">Error: ${error.error || 'Unknown error'}</p>`;
                 }
             } else {
                 const error = await response.json();

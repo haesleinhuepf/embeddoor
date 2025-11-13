@@ -3,10 +3,11 @@
 Handles route endpoints for heatmap visualizations.
 """
 
-from flask import jsonify, request
+from flask import jsonify, request, send_file
+from io import BytesIO
 import pandas as pd
 import numpy as np
-from embeddoor.visualization import create_heatmap_embedding, create_heatmap_columns
+from embeddoor.visualization import create_heatmap_embedding_image, create_heatmap_columns_image
 
 
 def register_heatmap_routes(app):
@@ -14,19 +15,23 @@ def register_heatmap_routes(app):
     
     @app.route('/api/view/heatmap/embedding', methods=['POST'])
     def generate_heatmap_embedding():
-        """Generate a heatmap from an embedding column.
+        """Generate a heatmap PNG from an embedding column.
         
         Request JSON:
             embedding_column: str - Column containing embedding vectors (required)
+            width: int - Image width in pixels (default: 800)
+            height: int - Image height in pixels (default: 600)
             
         Returns:
-            JSON with heatmap data
+            PNG image or JSON error
         """
         if app.data_manager.df is None:
             return jsonify({'error': 'No data loaded'}), 404
         
         payload = request.get_json(silent=True) or {}
         embedding_column = payload.get('embedding_column')
+        width = payload.get('width', 800)
+        height = payload.get('height', 600)
         
         if not embedding_column:
             return jsonify({'error': 'Embedding column required'}), 400
@@ -37,32 +42,40 @@ def register_heatmap_routes(app):
             return jsonify({'error': f'Column {embedding_column} not found'}), 400
         
         try:
-            heatmap_json = create_heatmap_embedding(df, embedding_column)
-            return jsonify({'success': True, 'plot': heatmap_json})
+            png_bytes = create_heatmap_embedding_image(df, embedding_column, width=width, height=height)
+            buf = BytesIO(png_bytes)
+            buf.seek(0)
+            return send_file(buf, mimetype='image/png', as_attachment=False)
         except Exception as e:
-            return jsonify({'error': "E1 " + str(e)}), 500
+            return jsonify({'error': str(e)}), 500
     
     @app.route('/api/view/heatmap/columns', methods=['POST'])
     def generate_heatmap_columns():
-        """Generate a heatmap from numeric columns.
+        """Generate a heatmap PNG from numeric columns.
         
         Request JSON:
             columns: list[str] - Specific columns to use (optional, defaults to all numeric)
+            width: int - Image width in pixels (default: 800)
+            height: int - Image height in pixels (default: 600)
         
         Returns:
-            JSON with heatmap data
+            PNG image or JSON error
         """
         if app.data_manager.df is None:
             return jsonify({'error': 'No data loaded'}), 404
         
         payload = request.get_json(silent=True) or {}
         columns = payload.get('columns')
+        width = payload.get('width', 800)
+        height = payload.get('height', 600)
         
         df = app.data_manager.df
         
         try:
-            heatmap_json = create_heatmap_columns(df, columns)
-            return jsonify({'success': True, 'plot': heatmap_json})
+            png_bytes = create_heatmap_columns_image(df, columns, width=width, height=height)
+            buf = BytesIO(png_bytes)
+            buf.seek(0)
+            return send_file(buf, mimetype='image/png', as_attachment=False)
         except Exception as e:
             return jsonify({'error': str(e)}), 500
     
