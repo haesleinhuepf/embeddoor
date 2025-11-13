@@ -227,6 +227,19 @@ class FloatingPanel {
     }
 
     async renderPlot(body) {
+        // Save current selections before re-rendering
+        const existingXSelect = body.querySelector('.plot-x-column');
+        const existingYSelect = body.querySelector('.plot-y-column');
+        const existingZSelect = body.querySelector('.plot-z-column');
+        const existingHueSelect = body.querySelector('.plot-hue-column');
+        
+        if (existingXSelect) {
+            this.config.plotX = existingXSelect.value;
+            this.config.plotY = existingYSelect?.value;
+            this.config.plotZ = existingZSelect?.value;
+            this.config.plotHue = existingHueSelect?.value;
+        }
+
         // Create plot controls and container
         body.innerHTML = `
             <div style="padding: 8px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
@@ -260,10 +273,31 @@ class FloatingPanel {
             hueSelect.add(new Option(col, col));
         });
 
-        // Set defaults
-        if (numCols.length >= 2) {
+        // Restore previous selections if they exist, otherwise set defaults
+        if (this.config.plotX && numCols.includes(this.config.plotX)) {
+            xSelect.value = this.config.plotX;
+        } else if (numCols.length >= 1) {
             xSelect.value = numCols[0];
+            this.config.plotX = numCols[0];
+        }
+
+        if (this.config.plotY && numCols.includes(this.config.plotY)) {
+            ySelect.value = this.config.plotY;
+        } else if (numCols.length >= 2) {
             ySelect.value = numCols[1];
+            this.config.plotY = numCols[1];
+        }
+
+        if (this.config.plotZ && (this.config.plotZ === '' || numCols.includes(this.config.plotZ))) {
+            zSelect.value = this.config.plotZ;
+        }
+
+        if (this.config.plotHue && (this.config.plotHue === '' || allCols.includes(this.config.plotHue))) {
+            hueSelect.value = this.config.plotHue;
+        }
+
+        // Only update plot if we have valid selections
+        if (xSelect.value) {
             await this.updatePlot();
         }
     }
@@ -281,6 +315,12 @@ class FloatingPanel {
         const hue = hueSelect?.value || null;
 
         if (!x) return;
+
+        // Save current selections to config for persistence
+        this.config.plotX = x;
+        this.config.plotY = y;
+        this.config.plotZ = z;
+        this.config.plotHue = hue;
 
         try {
             const response = await fetch('/api/view/plot', {
