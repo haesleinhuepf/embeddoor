@@ -1127,6 +1127,8 @@ class EmbeddoorApp {
             'table': 'Table',
             'wordcloud': 'Word Cloud',
             'images': 'Images',
+            'heatmap-embedding': 'Heatmap (Embedding)',
+            'heatmap-columns': 'Heatmap (Columns)',
             'terminal': 'IPython Terminal'
         };
 
