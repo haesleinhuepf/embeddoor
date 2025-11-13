@@ -482,6 +482,8 @@ def create_heatmap_embedding(df: pd.DataFrame, embedding_column: str) -> str:
     """
     # Check if selection column exists
     has_selection = 'selection' in df.columns
+
+    print("df.shape", df.shape)
     
     # Extract embeddings
     embeddings = []
@@ -522,66 +524,70 @@ def create_heatmap_embedding(df: pd.DataFrame, embedding_column: str) -> str:
     if not embeddings:
         raise ValueError("No valid embeddings found")
     
+
     # Convert to numpy array
     embeddings_array = np.array(embeddings)
+    print("E shape", embeddings_array.shape)
     
+    # Normalize embeddings to 0-255 range and convert to integers
+    data_min = embeddings_array.min()
+    data_max = embeddings_array.max()
+    if data_max > data_min:
+        embeddings_array = ((embeddings_array - data_min) / (data_max - data_min) * 255).astype(np.int32)
+    else:
+        embeddings_array = np.zeros_like(embeddings_array, dtype=np.int32)
+
+    print("E2 shape", embeddings_array.shape)
+
+
     # Create figure with single heatmap
     fig = go.Figure()
     
     # For rows with selection, we'll apply color masking by creating custom colorscale
     if has_selection and any(selected_mask):
-        # Create separate heatmaps for selected and unselected
-        # We need to handle this by creating custom row annotations or using subplots
-        # For simplicity, we'll color code using y-axis text color and add visual separator
+        # Use a single heatmap with custom colorscale
+        # Selected rows: 0-255 (orange range)
+        # Unselected rows: 256-511 (blue range)
         
-        # Reorder data: unselected first, then selected
         unselected_indices = [i for i, sel in enumerate(selected_mask) if not sel]
         selected_indices = [i for i, sel in enumerate(selected_mask) if sel]
         
-        new_order = unselected_indices + selected_indices
-        reordered_data = embeddings_array[new_order]
-        reordered_labels = [row_labels[i] for i in new_order]
-        reordered_selection = [selected_mask[i] for i in new_order]
+        # Create modified data with offset for unselected rows
+        normalized_data = embeddings_array.copy().astype(np.float64)
         
-        # Create custom colorscale that blends blue and orange
-        # We'll use a workaround: normalize data and add offset for selected rows
-        normalized_data = reordered_data.copy()
+        # Add offset to unselected rows to map to blue part of colorscale (256-511)
+        offset = 256
+        normalized_data[selected_mask] = normalized_data[selected_mask] + offset
         
-        # Scale selected rows differently to use orange color range
-        for i, is_selected in enumerate(reordered_selection):
-            if is_selected:
-                # Add offset to selected rows to map to orange part of colorscale
-                normalized_data[i] = normalized_data[i] + embeddings_array.max() + 1
+        # Create a custom colorscale with orange for selected (0-255) and blue for unselected (256-511)
+        max_val = offset + 255  # 511
         
-        # Create a custom colorscale with blue for lower values and orange for higher
-        data_min = embeddings_array.min()
-        data_max = embeddings_array.max()
-        data_range = data_max - data_min if data_max > data_min else 1
-        offset = data_max + 1
-        
-        # Colorscale: blue range [0, 0.5], orange range [0.5, 1.0]
+        # Colorscale: orange range [0, 0.5], blue range [0.5, 1.0]
         colorscale = [
-            [0.0, 'rgb(255, 255, 255)'],      # white (min blue)
-            [0.49, 'rgb(31, 119, 180)'],      # matplotlib blue (max blue)
-            [0.51, 'rgb(255, 255, 255)'],     # white (min orange)
-            [1.0, 'rgb(255, 127, 14)']        # matplotlib orange (max orange)
+            [0.0, 'rgb(255, 255, 255)'],   # white (min blue) at value 256
+            [255/max_val, 'rgb(31, 119, 180)'],             # matplotlib blue (max blue) at value 511
+            [256/max_val, 'rgb(255, 255, 255)'],           # white (min orange) at value 0
+            [1.0, 'rgb(255, 127, 14)']    # matplotlib orange (max orange) at value 255
+            
         ]
+
+        print("SHAPE", normalized_data.shape)
         
         fig.add_trace(go.Heatmap(
             z=normalized_data.tolist(),
-            y=reordered_labels,
-            x=list(range(reordered_data.shape[1])),
+            y=row_labels,
+            x=list(range(normalized_data.shape[1])),
             colorscale=colorscale,
             showscale=False,  # Hide scale since values are modified
-            hovertemplate='Row: %{y}<br>Dimension: %{x}<br>Value: %{z:.4f}<extra></extra>',
+            hovertemplate='Row: %{y}<br>Dimension: %{x}<br>Value: %{z:.0f}<extra></extra>',
             zauto=False,
-            zmin=data_min,
-            zmax=offset + data_range
+            zmin=0,
+            zmax=max_val
         ))
         
         # Add annotation to indicate color coding
         fig.add_annotation(
-            text=f"Blue: Unselected ({len(unselected_indices)}) | Orange: Selected ({len(selected_indices)})",
+            text=f"Orange: Selected ({len(selected_indices)}) | Blue: Unselected ({len(unselected_indices)})",
             xref="paper", yref="paper",
             x=0.5, y=1.05,
             showarrow=False,
@@ -599,8 +605,10 @@ def create_heatmap_embedding(df: pd.DataFrame, embedding_column: str) -> str:
             y=row_labels,
             x=list(range(embeddings_array.shape[1])),
             colorscale=colorscale_blue,
-            showscale=True,
-            hovertemplate='Row: %{y}<br>Dimension: %{x}<br>Value: %{z:.4f}<extra></extra>'
+            showscale=False,
+            hovertemplate='Row: %{y}<br>Dimension: %{x}<br>Value: %{z:.0f}<extra></extra>',
+            zmin=0,
+            zmax=255
         ))
         print("A-")
     
@@ -610,7 +618,7 @@ def create_heatmap_embedding(df: pd.DataFrame, embedding_column: str) -> str:
         yaxis_title='Row Index',
         hovermode='closest',
         xaxis=dict(autorange=True),
-        yaxis=dict(autorange=True),
+        yaxis=dict(autorange='reversed'),
         margin=dict(l=80, r=40, t=40, b=60),
         autosize=True
     )
@@ -655,17 +663,17 @@ def create_heatmap_columns(df: pd.DataFrame, columns: Optional[List[str]] = None
     # Extract numeric data
     numeric_data = df[numeric_cols].copy()
     
-    # Normalize each column to 0-1
+    # Normalize each column to 0-255 and convert to integers
     for col in numeric_cols:
         col_min = numeric_data[col].min()
         col_max = numeric_data[col].max()
         if col_max > col_min:
-            numeric_data[col] = (numeric_data[col] - col_min) / (col_max - col_min)
+            numeric_data[col] = ((numeric_data[col] - col_min) / (col_max - col_min) * 255).astype(np.int32)
         else:
-            numeric_data[col] = 0.0
+            numeric_data[col] = 0
     
     # Convert to numpy array
-    data_array = numeric_data.values
+    data_array = numeric_data.values.astype(np.int32)
     row_labels = [str(idx) for idx in df.index]
     
     # Create figure
@@ -686,12 +694,13 @@ def create_heatmap_columns(df: pd.DataFrame, columns: Optional[List[str]] = None
             reordered_selection = [selected_mask[i] for i in new_order]
             
             # Create custom colorscale with offset for selected rows
-            normalized_data = reordered_data.copy()
+            normalized_data = reordered_data.copy().astype(np.float64)
             
             # Add offset to selected rows (shift to orange color range)
+            # Data is now 0-255, so add offset accordingly
             for i, is_selected in enumerate(reordered_selection):
                 if is_selected:
-                    normalized_data[i] = normalized_data[i] + 1.1  # offset beyond [0,1] range
+                    normalized_data[i] = normalized_data[i] + 256  # offset beyond 0-255 range
             
             # Colorscale: blue range [0, 0.5], orange range [0.5, 1.0]
             colorscale = [
@@ -707,10 +716,10 @@ def create_heatmap_columns(df: pd.DataFrame, columns: Optional[List[str]] = None
                 x=numeric_cols,
                 colorscale=colorscale,
                 showscale=False,  # Hide scale since values are modified
-                hovertemplate='Row: %{y}<br>Column: %{x}<br>Normalized Value: %{z:.4f}<extra></extra>',
+                hovertemplate='Row: %{y}<br>Column: %{x}<br>Value: %{z:.0f}<extra></extra>',
                 zauto=False,
                 zmin=0,
-                zmax=2.1
+                zmax=511  # 0-255 for unselected + 256-511 for selected
             ))
             
             # Add annotation to indicate color coding
@@ -733,10 +742,10 @@ def create_heatmap_columns(df: pd.DataFrame, columns: Optional[List[str]] = None
                 y=row_labels,
                 x=numeric_cols,
                 colorscale=colorscale_blue,
-                showscale=True,
-                hovertemplate='Row: %{y}<br>Column: %{x}<br>Normalized Value: %{z:.4f}<extra></extra>',
+                showscale=False,
+                hovertemplate='Row: %{y}<br>Column: %{x}<br>Value: %{z:.0f}<extra></extra>',
                 zmin=0,
-                zmax=1
+                zmax=255
             ))
     else:
         # No selection column, use blue for all
@@ -750,10 +759,10 @@ def create_heatmap_columns(df: pd.DataFrame, columns: Optional[List[str]] = None
             y=row_labels,
             x=numeric_cols,
             colorscale=colorscale_blue,
-            showscale=True,
-            hovertemplate='Row: %{y}<br>Column: %{x}<br>Normalized Value: %{z:.4f}<extra></extra>',
+            showscale=False,
+            hovertemplate='Row: %{y}<br>Column: %{x}<br>Value: %{z:.0f}<extra></extra>',
             zmin=0,
-            zmax=1
+            zmax=255
         ))
     
     fig.update_layout(
@@ -761,6 +770,7 @@ def create_heatmap_columns(df: pd.DataFrame, columns: Optional[List[str]] = None
         xaxis_title='Column',
         yaxis_title='Row Index',
         hovermode='closest',
+        yaxis=dict(autorange='reversed'),
         autosize=True
     )
     

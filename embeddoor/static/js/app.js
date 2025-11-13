@@ -630,22 +630,11 @@ class FloatingPanel {
         container.innerHTML = '<p class="placeholder">Generating heatmap...</p>';
 
         try {
-            // Get selected indices if any
-            let indices = this.selectedIndices;
-            if (!indices || indices.length === 0) {
-                // Try to get selection from first plot panel
-                const plotPanel = window.app.panels.find(p => p.type === 'plot');
-                if (plotPanel) {
-                    indices = plotPanel.selectedIndices;
-                }
-            }
-
             const response = await fetch('/api/view/heatmap/embedding', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    embedding_column: embeddingColumn,
-                    indices: indices || []
+                    embedding_column: embeddingColumn
                 })
             });
 
@@ -692,22 +681,9 @@ class FloatingPanel {
         container.innerHTML = '<p class="placeholder">Generating heatmap...</p>';
 
         try {
-            // Get selected indices if any
-            let indices = this.selectedIndices;
-            if (!indices || indices.length === 0) {
-                // Try to get selection from first plot panel
-                const plotPanel = window.app.panels.find(p => p.type === 'plot');
-                if (plotPanel) {
-                    indices = plotPanel.selectedIndices;
-                }
-            }
-
             const response = await fetch('/api/view/heatmap/columns', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    indices: indices || []
-                })
+                headers: { 'Content-Type': 'application/json' }
             });
 
             if (response.ok) {

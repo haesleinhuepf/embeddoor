@@ -18,8 +18,7 @@ def register_heatmap_routes(app):
         
         Request JSON:
             embedding_column: str - Column containing embedding vectors (required)
-            indices: list[int] - Row indices to display (optional, defaults to all)
-        
+            
         Returns:
             JSON with heatmap data
         """
@@ -28,7 +27,6 @@ def register_heatmap_routes(app):
         
         payload = request.get_json(silent=True) or {}
         embedding_column = payload.get('embedding_column')
-        indices = payload.get('indices')
         
         if not embedding_column:
             return jsonify({'error': 'Embedding column required'}), 400
@@ -38,27 +36,17 @@ def register_heatmap_routes(app):
         if embedding_column not in df.columns:
             return jsonify({'error': f'Column {embedding_column} not found'}), 400
         
-        # Select subset
-        if indices:
-            try:
-                subset = df.iloc[indices]
-            except Exception:
-                subset = df
-        else:
-            subset = df
-        
         try:
-            heatmap_json = create_heatmap_embedding(subset, embedding_column)
+            heatmap_json = create_heatmap_embedding(df, embedding_column)
             return jsonify({'success': True, 'plot': heatmap_json})
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            return jsonify({'error': "E1 " + str(e)}), 500
     
     @app.route('/api/view/heatmap/columns', methods=['POST'])
     def generate_heatmap_columns():
         """Generate a heatmap from numeric columns.
         
         Request JSON:
-            indices: list[int] - Row indices to display (optional, defaults to all)
             columns: list[str] - Specific columns to use (optional, defaults to all numeric)
         
         Returns:
@@ -68,22 +56,12 @@ def register_heatmap_routes(app):
             return jsonify({'error': 'No data loaded'}), 404
         
         payload = request.get_json(silent=True) or {}
-        indices = payload.get('indices')
         columns = payload.get('columns')
         
         df = app.data_manager.df
         
-        # Select subset
-        if indices:
-            try:
-                subset = df.iloc[indices]
-            except Exception:
-                subset = df
-        else:
-            subset = df
-        
         try:
-            heatmap_json = create_heatmap_columns(subset, columns)
+            heatmap_json = create_heatmap_columns(df, columns)
             return jsonify({'success': True, 'plot': heatmap_json})
         except Exception as e:
             return jsonify({'error': str(e)}), 500
