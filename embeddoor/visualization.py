@@ -310,11 +310,24 @@ def create_plot(
         fig.update_layout(
             xaxis_title=x_col,
             yaxis_title=y_col,
-            xaxis=dict(autorange=True),
-            yaxis=dict(autorange=True),
+            xaxis=dict(
+                autorange=True,
+                showline=True,
+                linewidth=1,
+                linecolor='black'
+            ),
+            yaxis=dict(
+                autorange=True,
+                showline=True,
+                linewidth=1,
+                linecolor='black',
+            ),
+            margin=dict(l=0, r=0, t=20, b=0),
             height=700,
             hovermode='closest',
-            dragmode='lasso'  # Enable lasso selection
+            dragmode='lasso',  # Enable lasso selection
+            paper_bgcolor='white',
+            plot_bgcolor='white'
         )
     
     else:
