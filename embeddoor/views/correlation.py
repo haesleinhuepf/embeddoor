@@ -52,22 +52,30 @@ def register_correlation_routes(app):
     
     @app.route('/api/view/correlation/columns/available', methods=['GET'])
     def get_numeric_columns_for_correlation():
-        """Get available numeric columns for correlation.
+        """Get available columns for correlation.
+        
+        Includes numeric columns, boolean columns, and the 'selection' column
+        if present. Boolean columns are represented by their original names; the
+        conversion to 0/1 is handled during correlation computation.
         
         Returns:
-            JSON with list of numeric columns
+            JSON with list of eligible columns
         """
         if app.data_manager.df is None:
             return jsonify({'error': 'No data loaded'}), 404
         
         df = app.data_manager.df
         numeric_cols = list(df.select_dtypes(include=[np.number]).columns)
-        
-        # Remove selection column if present
-        if 'selection' in numeric_cols:
-            numeric_cols.remove('selection')
-        
+        # Also include boolean columns explicitly
+        bool_cols = list(df.select_dtypes(include=['bool']).columns)
+        # Add 'selection' column if present (even if non-numeric)
+        if 'selection' in df.columns and 'selection' not in numeric_cols and 'selection' not in bool_cols:
+            bool_cols.append('selection')
+
+        # Merge and keep order as in DataFrame
+        eligible = [c for c in df.columns if c in set(numeric_cols) | set(bool_cols)]
+
         return jsonify({
             'success': True,
-            'columns': numeric_cols
+            'columns': eligible
         })

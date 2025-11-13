@@ -1,15 +1,15 @@
 # Pairwise Correlation Panel - Implementation Summary
 
 ## Overview
-Added a new "Pairwise Correlation" panel type to embeddoor that visualizes correlation matrices of all numeric columns in the dataset.
+Added a new "Pairwise Correlation" panel type to embeddoor that visualizes correlation matrices of eligible columns (numeric and boolean) in the dataset.
 
 ## Features
 - **Multiple correlation methods**: Users can choose between Pearson, Spearman, and Kendall correlation
-- **Automatic column filtering**: Automatically excludes non-numeric columns and the 'selection' column
+- **Automatic column filtering**: Automatically excludes non-numeric columns; includes boolean columns and the 'selection' column (treated as 0/1)
 - **Blue color scheme**: Consistent with heatmap visualizations, uses blue intensity for correlation values
 - **Interactive method selection**: Dropdown menu to switch between correlation methods with live updates
 - **Annotated matrix**: Correlation values are displayed as text on each cell
-- **Ignores selection**: Works with all data regardless of row selection
+- **Selection handling**: Works with all data regardless of selection; includes the 'selection' column as a variable if present
 
 ## Implementation Details
 
@@ -18,7 +18,7 @@ Added a new "Pairwise Correlation" panel type to embeddoor that visualizes corre
 #### 1. New View Module: `embeddoor/views/correlation.py`
 - `register_correlation_routes(app)`: Registers correlation-related Flask routes
 - `POST /api/view/correlation/matrix`: Generates correlation matrix PNG
-- `GET /api/view/correlation/columns/available`: Returns list of numeric columns
+- `GET /api/view/correlation/columns/available`: Returns list of eligible columns (numeric, boolean, and 'selection')
 
 #### 2. Visualization Function: `embeddoor/visualization.py`
 - `create_correlation_matrix_image()`: Generates correlation matrix as PNG image
@@ -123,8 +123,8 @@ Created `examples/correlation_example.py` demonstrating:
 
 **Error Responses:**
 - 400: Invalid correlation method
-- 400: No numeric columns found
-- 400: Less than 2 numeric columns
+- 400: No eligible columns found
+- 400: Less than 2 eligible columns
 - 404: No data loaded
 - 500: Processing error
 

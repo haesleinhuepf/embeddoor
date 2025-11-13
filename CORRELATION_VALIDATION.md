@@ -10,8 +10,8 @@
 - [✓] Implemented GET `/api/view/correlation/columns/available` endpoint
 - [✓] Supports Pearson, Spearman, and Kendall correlation methods
 - [✓] Validates correlation method parameter
-- [✓] Filters out non-numeric columns automatically
-- [✓] Excludes 'selection' column from correlation
+- [✓] Filters out non-numeric columns automatically (but includes boolean)
+- [✓] Includes 'selection' column and boolean columns (as 0/1) in correlation
 - [✓] Returns PNG image (consistent with heatmap)
 - [✓] Error handling for edge cases
 
@@ -70,7 +70,7 @@ Expected tests:
 2. Load CSV with mixed numeric/text columns
 3. Load CSV with only 1 numeric column (should show error)
 4. Load CSV with no numeric columns (should show error)
-5. Verify selection column is ignored
+5. Verify selection column is included and treated as 0/1
 6. Test with very large dataset (performance)
 7. Test with many columns (readability)
 

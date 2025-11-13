@@ -24,7 +24,8 @@ def test_correlation_matrix():
         'var3': x3,
         'var4': x4,
         'category': np.random.choice(['A', 'B', 'C'], n_samples),  # Non-numeric
-        'selection': np.random.choice([0, 1], n_samples)  # Selection column (should be ignored)
+        'selection': np.random.choice([0, 1], n_samples),  # Selection column (included as 0/1)
+        'flag_bool': np.random.choice([True, False], n_samples)  # Boolean column
     })
     
     print("Test DataFrame shape:", df.shape)

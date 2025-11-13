@@ -196,14 +196,14 @@ Generate a correlation matrix visualization.
 - `kendall`: Measures ordinal association (tau correlation)
 
 **Features:**
-- Automatically excludes non-numeric columns
-- Ignores the 'selection' column
+- Automatically excludes non-numeric columns (but includes boolean)
+- Includes boolean columns and the 'selection' column (as 0/1)
 - Uses blue colormap for consistency with heatmap views
 - Displays correlation values as text annotations on the matrix
-- Requires at least 2 numeric columns
+- Requires at least 2 eligible columns
 
 #### `GET /api/view/correlation/columns/available`
-Get available numeric columns for correlation.
+Get available columns for correlation (numeric, boolean, and 'selection').
 
 **Response:**
 ```json

@@ -1101,14 +1101,24 @@ def create_correlation_matrix_image(
     matplotlib.use('Agg')  # Use non-interactive backend
     import matplotlib.pyplot as plt
     
-    # Get numeric columns
+    # Determine eligible columns: numeric, boolean, and 'selection'
     if columns:
-        numeric_cols = [col for col in columns if col in df.columns and pd.api.types.is_numeric_dtype(df[col])]
+        # Keep requested columns that are numeric/boolean or named 'selection'
+        numeric_cols = []
+        for col in columns:
+            if col not in df.columns:
+                continue
+            if pd.api.types.is_numeric_dtype(df[col]) or pd.api.types.is_bool_dtype(df[col]) or col == 'selection':
+                numeric_cols.append(col)
     else:
         numeric_cols = list(df.select_dtypes(include=[np.number]).columns)
-        # Remove selection column if present
-        if 'selection' in numeric_cols:
-            numeric_cols.remove('selection')
+        # Also include boolean columns
+        bool_cols = list(df.select_dtypes(include=['bool']).columns)
+        # Ensure 'selection' is included even if not numeric/bool
+        if 'selection' in df.columns and 'selection' not in numeric_cols and 'selection' not in bool_cols:
+            bool_cols.append('selection')
+        # Merge preserving DataFrame column order
+        numeric_cols = [c for c in df.columns if c in set(numeric_cols) | set(bool_cols)]
     
     if not numeric_cols:
         raise ValueError("No numeric columns found")
@@ -1116,8 +1126,19 @@ def create_correlation_matrix_image(
     if len(numeric_cols) < 2:
         raise ValueError("At least 2 numeric columns required for correlation matrix")
     
-    # Extract numeric data
+    # Extract data and coerce types as needed (bool -> int; selection -> 0/1)
     numeric_data = df[numeric_cols].copy()
+    for col in numeric_cols:
+        if col == 'selection':
+            # Map common truthy values to 1, else 0
+            s = df[col]
+            truthy = s.isin([1, True, '1', 'True', 'true']) if s.dtype != bool else s
+            numeric_data[col] = truthy.astype(int)
+        elif pd.api.types.is_bool_dtype(numeric_data[col]):
+            numeric_data[col] = numeric_data[col].astype(int)
+        else:
+            # Ensure numeric (coerce errors to NaN which corr will handle)
+            numeric_data[col] = pd.to_numeric(numeric_data[col], errors='coerce')
     
     # Calculate correlation matrix (ignoring selection - work with all data)
     corr_matrix = numeric_data.corr(method=method)
