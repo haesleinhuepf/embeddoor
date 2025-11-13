@@ -1,6 +1,8 @@
 # Embeddoor
 
-A browser-based tool for embedding visualization and analysis, similar to Jupyter Lab, Streamlit, or Voila.
+A browser-based tool for embedding visualization and analysis.
+
+![](logo.png)
 
 ## Features
 
