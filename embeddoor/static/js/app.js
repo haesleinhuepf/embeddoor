@@ -1005,6 +1005,20 @@ class EmbeddoorApp {
         });
         document.getElementById('dimred-dialog-cancel').addEventListener('click', () => this.hideModal('dimred-dialog'));
 
+        // Selection menu
+        document.getElementById('store-selection').addEventListener('click', () => this.showStoreSelectionDialog());
+        document.getElementById('restore-selection').addEventListener('click', () => this.showRestoreSelectionDialog());
+        document.getElementById('store-selection-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.storeSelection();
+        });
+        document.getElementById('store-selection-dialog-cancel').addEventListener('click', () => this.hideModal('store-selection-dialog'));
+        document.getElementById('restore-selection-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.restoreSelection();
+        });
+        document.getElementById('restore-selection-dialog-cancel').addEventListener('click', () => this.hideModal('restore-selection-dialog'));
+
         // View menu
         document.getElementById('add-panel').addEventListener('click', () => this.showAddPanelDialog());
         document.getElementById('btn-add-panel').addEventListener('click', () => this.showAddPanelDialog());
@@ -1357,6 +1371,124 @@ class EmbeddoorApp {
         } catch (error) {
             console.error('Error:', error);
             alert('Error applying dimensionality reduction: ' + error.message);
+            this.setStatus('Error');
+        }
+    }
+
+    showStoreSelectionDialog() {
+        if (!this.dataInfo || !this.dataInfo.loaded) {
+            alert('Please load data first');
+            return;
+        }
+        
+        // Clear the input field
+        document.getElementById('store-selection-name').value = '';
+        this.showModal('store-selection-dialog');
+    }
+
+    async storeSelection() {
+        const name = document.getElementById('store-selection-name').value.trim();
+        
+        if (!name) {
+            alert('Please enter a name for the selection');
+            return;
+        }
+        
+        this.setStatus('Storing selection...');
+        this.hideModal('store-selection-dialog');
+        
+        try {
+            const response = await fetch('/api/selection/store', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.setStatus(`Selection stored as "${name}"`);
+                await this.checkDataStatus();
+            } else {
+                alert('Error storing selection: ' + result.error);
+                this.setStatus('Error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error storing selection: ' + error.message);
+            this.setStatus('Error');
+        }
+    }
+
+    async showRestoreSelectionDialog() {
+        if (!this.dataInfo || !this.dataInfo.loaded) {
+            alert('Please load data first');
+            return;
+        }
+        
+        try {
+            // Fetch the list of stored selections
+            const response = await fetch('/api/selection/list');
+            const result = await response.json();
+            
+            if (!result.success) {
+                alert('Error loading stored selections: ' + result.error);
+                return;
+            }
+            
+            if (result.selections.length === 0) {
+                alert('No stored selections found. Please store a selection first.');
+                return;
+            }
+            
+            // Populate the dropdown
+            const select = document.getElementById('restore-selection-name');
+            select.innerHTML = '<option value="">-- Select a stored selection --</option>';
+            result.selections.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                select.appendChild(option);
+            });
+            
+            this.showModal('restore-selection-dialog');
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error loading stored selections: ' + error.message);
+        }
+    }
+
+    async restoreSelection() {
+        const name = document.getElementById('restore-selection-name').value;
+        
+        if (!name) {
+            alert('Please select a stored selection');
+            return;
+        }
+        
+        this.setStatus('Restoring selection...');
+        this.hideModal('restore-selection-dialog');
+        
+        try {
+            const response = await fetch('/api/selection/restore', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.setStatus(`Selection "${name}" restored`);
+                await this.checkDataStatus();
+                this.refreshAllPlotPanels();
+            } else {
+                alert('Error restoring selection: ' + result.error);
+                this.setStatus('Error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error restoring selection: ' + error.message);
             this.setStatus('Error');
         }
     }

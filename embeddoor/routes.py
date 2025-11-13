@@ -228,3 +228,33 @@ def register_routes(app):
             return jsonify(result)
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
+    
+    @app.route('/api/selection/store', methods=['POST'])
+    def store_selection():
+        """Store the current selection to a named backup."""
+        data = request.json
+        name = data.get('name')
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'No name provided'}), 400
+        
+        result = app.data_manager.store_selection(name)
+        return jsonify(result)
+    
+    @app.route('/api/selection/restore', methods=['POST'])
+    def restore_selection():
+        """Restore a selection from a named backup."""
+        data = request.json
+        name = data.get('name')
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'No name provided'}), 400
+        
+        result = app.data_manager.restore_selection(name)
+        return jsonify(result)
+    
+    @app.route('/api/selection/list', methods=['GET'])
+    def list_stored_selections():
+        """Get a list of all stored selections."""
+        result = app.data_manager.get_stored_selections()
+        return jsonify(result)

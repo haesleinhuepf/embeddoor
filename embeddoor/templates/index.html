@@ -34,6 +34,13 @@
                     <a href="#" id="apply-umap">Apply UMAP...</a>
                 </div>
             </div>
+            <div class="menu-item" id="selection-menu">
+                <span>Selection</span>
+                <div class="dropdown-content">
+                    <a href="#" id="store-selection">Store Selection...</a>
+                    <a href="#" id="restore-selection">Restore Selection...</a>
+                </div>
+            </div>
             <div class="menu-item" id="view-menu">
                 <span>View</span>
                 <div class="dropdown-content">
@@ -158,6 +165,40 @@
                 <div class="modal-buttons">
                     <button type="submit">Load</button>
                     <button type="button" id="huggingface-dialog-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="store-selection-dialog" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Store Selection</h2>
+            <form id="store-selection-form">
+                <label>Selection Name:
+                    <input type="text" id="store-selection-name" placeholder="Enter a name for this selection" required>
+                </label>
+                <div class="modal-buttons">
+                    <button type="submit">Store</button>
+                    <button type="button" id="store-selection-dialog-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="restore-selection-dialog" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Restore Selection</h2>
+            <form id="restore-selection-form">
+                <label>Select Stored Selection:
+                    <select id="restore-selection-name" required>
+                        <option value="">-- Select a stored selection --</option>
+                    </select>
+                </label>
+                <div class="modal-buttons">
+                    <button type="submit">Restore</button>
+                    <button type="button" id="restore-selection-dialog-cancel">Cancel</button>
                 </div>
             </form>
         </div>

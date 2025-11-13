@@ -219,3 +219,59 @@ class DataManager:
             }
         except Exception as e:
             return {'success': False, 'error': str(e)}
+    
+    def store_selection(self, name: str) -> Dict[str, Any]:
+        """Store the current selection column to a named backup column."""
+        if self.df is None:
+            return {'success': False, 'error': 'No data loaded'}
+        
+        if 'selection' not in self.df.columns:
+            return {'success': False, 'error': 'No selection column found'}
+        
+        try:
+            target_column = f"selection_{name}"
+            self.df[target_column] = self.df['selection'].copy()
+            
+            return {
+                'success': True,
+                'column': target_column,
+                'name': name
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    def restore_selection(self, name: str) -> Dict[str, Any]:
+        """Restore a selection from a named backup column."""
+        if self.df is None:
+            return {'success': False, 'error': 'No data loaded'}
+        
+        source_column = f"selection_{name}"
+        if source_column not in self.df.columns:
+            return {'success': False, 'error': f'Selection "{name}" not found'}
+        
+        try:
+            self.df['selection'] = self.df[source_column].copy()
+            
+            return {
+                'success': True,
+                'name': name,
+                'source_column': source_column
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    def get_stored_selections(self) -> Dict[str, Any]:
+        """Get a list of all stored selection names."""
+        if self.df is None:
+            return {'success': False, 'error': 'No data loaded'}
+        
+        try:
+            selection_columns = [col for col in self.df.columns if col.startswith('selection_')]
+            selection_names = [col.replace('selection_', '', 1) for col in selection_columns]
+            
+            return {
+                'success': True,
+                'selections': selection_names
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
