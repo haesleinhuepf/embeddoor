@@ -157,6 +157,10 @@ class FloatingPanel {
             this.isResizing = false;
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
+                // Redraw heatmap/correlation only after resizing is finished
+                if (['heatmap-embedding', 'heatmap-columns', 'correlation'].includes(this.type)) {
+                    this.updateContent();
+                }
         };
 
         document.addEventListener('mousemove', onMouseMove);
