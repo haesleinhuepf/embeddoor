@@ -113,13 +113,27 @@ class FloatingPanel {
         this.dragOffsetY = e.clientY - this.y;
         this.element.classList.add('active');
 
-        const onMouseMove = (e) => {
-            if (!this.isDragging) return;
-            this.x = e.clientX - this.dragOffsetX;
-            this.y = e.clientY - this.dragOffsetY;
-            this.element.style.left = `${this.x}px`;
-            this.element.style.top = `${this.y}px`;
-        };
+            const onMouseMove = (e) => {
+                if (!this.isDragging) return;
+                this.x = e.clientX - this.dragOffsetX;
+                this.y = e.clientY - this.dragOffsetY;
+
+                // Snap panel below toolbar if moved behind it
+                const toolbar = document.getElementById('toolbar');
+                if (toolbar) {
+                    const toolbarRect = toolbar.getBoundingClientRect();
+                    const container = document.getElementById('panels-container');
+                    const containerRect = container ? container.getBoundingClientRect() : { top: 0 };
+                    // Calculate relative to container
+                    const minY = toolbarRect.bottom - containerRect.top;
+                    if (this.y < minY) {
+                        this.y = minY;
+                    }
+                }
+
+                this.element.style.left = `${this.x}px`;
+                this.element.style.top = `${this.y}px`;
+            };
 
         const onMouseUp = () => {
             this.isDragging = false;
