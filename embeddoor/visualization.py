@@ -38,16 +38,6 @@ def create_plot(
     Returns:
         JSON string of the Plotly figure
     """
-    print("vis start")
-    print("data length:", len(data))
-    print("data sample:", data[:2])
-    print("x_col:", x_col)
-    print("y_col:", y_col)
-    print("z_col:", z_col)
-    print("hue_col:", hue_col)
-    print("size_col:", size_col)
-    print("plot_type:", plot_type)
-
     df = pd.DataFrame(data)
     
     # Extract index column if present
@@ -122,7 +112,6 @@ def create_plot(
                 ))
         elif has_selection:
             # Split data into selected and unselected
-            print("handling selection column in 3D")
             selected_mask = df['selection'] == True
             unselected_mask = ~selected_mask
             
@@ -214,7 +203,6 @@ def create_plot(
         )
     
     elif y_col:
-        print("2d plot")
         # 2D scatter plot
         fig = go.Figure()
         
@@ -222,7 +210,6 @@ def create_plot(
         has_selection = 'selection' in df.columns
         
         if hue_col:
-            print("hue")
             for hue_value in df[hue_col].unique():
                 mask = df[hue_col] == hue_value
                 subset = df[mask].reset_index(drop=True)
@@ -248,7 +235,6 @@ def create_plot(
                 ))
         elif has_selection:
             # Split data into selected and unselected
-            print("handling selection column")
             selected_mask = df['selection'] == True
             unselected_mask = ~selected_mask
             
@@ -302,12 +288,6 @@ def create_plot(
                     )
                 ))
         else:
-            print("no hue")
-            print("data", df.head())
-            print("indices", indices.head() if hasattr(indices, 'head') else indices[:5])
-            print("x values", df[x_col].head())
-            print("y values", df[y_col].head())
-
             marker_dict = {'size': 8}
             if size_col:
                 marker_dict['size'] = df[size_col].tolist()
@@ -327,7 +307,6 @@ def create_plot(
             ))
             
 
-        print("update layout")
         fig.update_layout(
             xaxis_title=x_col,
             yaxis_title=y_col,
@@ -354,9 +333,6 @@ def create_plot(
             dragmode='lasso',
             selectdirection='any'
         )
-    print("vis done")
-    fig.write_html("debug_plot.html")
-
     return fig.to_json()
 
 
@@ -618,8 +594,6 @@ def create_heatmap_embedding(df: pd.DataFrame, embedding_column: str) -> str:
     # Check if selection column exists
     has_selection = 'selection' in df.columns
 
-    print("df.shape", df.shape)
-    
     # Extract embeddings
     embeddings = []
     row_labels = []
@@ -662,7 +636,6 @@ def create_heatmap_embedding(df: pd.DataFrame, embedding_column: str) -> str:
 
     # Convert to numpy array
     embeddings_array = np.array(embeddings)
-    print("E shape", embeddings_array.shape)
     
     # Normalize embeddings to 0-255 range and convert to integers
     data_min = embeddings_array.min()
@@ -671,9 +644,6 @@ def create_heatmap_embedding(df: pd.DataFrame, embedding_column: str) -> str:
         embeddings_array = ((embeddings_array - data_min) / (data_max - data_min) * 255).astype(np.int32)
     else:
         embeddings_array = np.zeros_like(embeddings_array, dtype=np.int32)
-
-    print("E2 shape", embeddings_array.shape)
-
 
     # Create figure with single heatmap
     fig = go.Figure()
@@ -705,8 +675,6 @@ def create_heatmap_embedding(df: pd.DataFrame, embedding_column: str) -> str:
             [1.0, 'rgb(255, 127, 14)']    # matplotlib orange (max orange) at value 255
             
         ]
-
-        print("SHAPE", normalized_data.shape)
         
         fig.add_trace(go.Heatmap(
             z=normalized_data.tolist(),
@@ -729,7 +697,6 @@ def create_heatmap_embedding(df: pd.DataFrame, embedding_column: str) -> str:
             font=dict(size=12)
         )
     else:
-        print("A", array2d_to_list(embeddings_array))
         # No selection, use simple blue colorscale
         colorscale_blue = [
             [0.0, 'rgb(255, 255, 255)'],  # white
@@ -745,7 +712,6 @@ def create_heatmap_embedding(df: pd.DataFrame, embedding_column: str) -> str:
             zmin=0,
             zmax=255
         ))
-        print("A-")
     
     fig.update_layout(
         title=f'Embedding Heatmap: {embedding_column}',
@@ -757,11 +723,6 @@ def create_heatmap_embedding(df: pd.DataFrame, embedding_column: str) -> str:
         margin=dict(l=80, r=40, t=40, b=60),
         autosize=True
     )
-    
-    print("xaxis", fig.layout.xaxis)
-    print("xaxis.range", fig.layout.xaxis.range)
-
-    fig.write_html("debug_plot2.html")
 
     return fig.to_json()
 

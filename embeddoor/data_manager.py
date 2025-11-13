@@ -32,9 +32,7 @@ class DataManager:
     def load_parquet(self, filepath: str) -> Dict[str, Any]:
         """Load a Parquet file."""
         try:
-            print("loading", filepath)
             self.df = pd.read_parquet(filepath)
-            print("loaded", self.df.head())
             
             self.current_file = filepath
             return {

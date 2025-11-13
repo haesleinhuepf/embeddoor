@@ -105,8 +105,6 @@ def register_routes(app):
         else:
             return jsonify({'success': False, 'error': 'Unsupported file type'}), 400
 
-        print("Data loaded successfully:", result)
-
         return jsonify(result)
     
     @app.route('/api/data/load-huggingface', methods=['POST'])
