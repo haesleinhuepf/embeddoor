@@ -11,6 +11,7 @@ from embeddoor.views.images import register_images_routes
 from embeddoor.views.terminal import register_terminal_routes
 from embeddoor.views.heatmap import register_heatmap_routes
 from embeddoor.views.correlation import register_correlation_routes
+from embeddoor.views.ridgeplot import register_ridgeplot_routes
 
 def register_all_views(app):
     """Register all view routes with the Flask app."""
@@ -21,3 +22,4 @@ def register_all_views(app):
     register_terminal_routes(app)
     register_heatmap_routes(app)
     register_correlation_routes(app)
+    register_ridgeplot_routes(app)

@@ -1156,3 +1156,183 @@ def create_correlation_matrix_image(
     plt.close(fig)
     buf.seek(0)
     return buf.read()
+
+
+def create_ridgeplot_numeric_columns_image(
+    df: pd.DataFrame,
+    columns: Optional[List[str]] = None,
+    width: int = 800,
+    height: int = 600,
+    bins: int = 200,
+    overlap: float = 0.75
+) -> bytes:
+    """
+    Create a ridgeplot (joyplot) PNG image for all numeric columns.
+
+    The x-axis is shared across all columns using the global min/max to align
+    the distributions. If a boolean 'selection' column exists, densities for
+    selected (orange) and unselected (blue) subsets are overlaid per row.
+
+    Args:
+        df: DataFrame containing the data
+        columns: Optional list of numeric columns to include. Defaults to all numeric (excl. 'selection').
+        width: Output image width in pixels
+        height: Output image height in pixels
+        bins: Number of points along x-axis for density estimation
+        overlap: Fraction of vertical overlap between adjacent ridges (0..1)
+
+    Returns:
+        Raw PNG bytes
+    """
+    import matplotlib
+    matplotlib.use('Agg')  # Non-interactive backend for server-side render
+    import matplotlib.pyplot as plt
+
+    # Determine numeric columns
+    if columns:
+        numeric_cols = [c for c in columns if c in df.columns and pd.api.types.is_numeric_dtype(df[c])]
+    else:
+        numeric_cols = list(df.select_dtypes(include=[np.number]).columns)
+        if 'selection' in numeric_cols:
+            numeric_cols.remove('selection')
+
+    if not numeric_cols:
+        raise ValueError("No numeric columns found")
+
+    # Compute global min/max across all selected numeric columns for shared x-axis
+    col_mins = []
+    col_maxs = []
+    for col in numeric_cols:
+        series = pd.to_numeric(df[col], errors='coerce').dropna()
+        if series.empty:
+            continue
+        col_mins.append(series.min())
+        col_maxs.append(series.max())
+    if not col_mins:
+        raise ValueError("No valid numeric data to plot")
+    global_min = float(np.min(col_mins))
+    global_max = float(np.max(col_maxs))
+    if not np.isfinite(global_min) or not np.isfinite(global_max) or global_min == global_max:
+        # Fallback range
+        global_min, global_max = 0.0, 1.0
+
+    # X grid for density estimation
+    x = np.linspace(global_min, global_max, bins)
+
+    # Simple Gaussian kernel for smoothing hist densities (no SciPy dependency)
+    def smooth_hist(values: np.ndarray) -> np.ndarray:
+        values = values.astype(float)
+        if values.size < 2:
+            return np.zeros_like(x)
+        # Use Freedman–Diaconis rule to set bandwidth-ish window in x bins
+        iqr = np.subtract(*np.percentile(values, [75, 25])) if values.size > 1 else 0.0
+        std = np.std(values) if values.size > 1 else 0.0
+        # Heuristic bandwidth
+        bw = 1.06 * std * (values.size ** (-1/5)) if std > 0 else (iqr / 1.34 if iqr > 0 else (global_max - global_min) / 30.0)
+        bw = max(bw, (global_max - global_min) / 100.0)
+        # Build histogram density on the shared grid using linear interpolation of bin counts
+        hist_counts, hist_edges = np.histogram(values, bins=max(20, int(np.sqrt(values.size))), range=(global_min, global_max), density=True)
+        centers = (hist_edges[:-1] + hist_edges[1:]) / 2.0
+        # Interpolate to x grid
+        dens = np.interp(x, centers, hist_counts, left=0.0, right=0.0)
+        # Convolve with Gaussian kernel in x-space
+        sigma_bins = max(1.0, bw * (bins / max(global_max - global_min, 1e-9)))  # convert to grid bins
+        win_half = int(3 * sigma_bins)
+        t = np.arange(-win_half, win_half + 1)
+        kernel = np.exp(-(t**2) / (2 * sigma_bins**2))
+        kernel /= kernel.sum() if kernel.sum() > 0 else 1.0
+        smoothed = np.convolve(dens, kernel, mode='same')
+        return smoothed
+
+    # Figure: leave space on left for y labels
+    fig_w, fig_h = width / 100.0, height / 100.0
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h), dpi=100)
+
+    # Determine vertical scaling per ridge
+    n = len(numeric_cols)
+    if n == 0:
+        raise ValueError("No numeric columns found")
+    # Vertical positions from top to bottom
+    y_positions = np.linspace(n - 1, 0, n)
+    # Scale factor to control overlap
+    vscale = 1.0 - overlap
+    vscale = max(0.1, min(1.0, vscale))
+
+    has_selection = 'selection' in df.columns
+    any_selected = False
+    if has_selection:
+        sel_series = df['selection']
+        if sel_series.dtype != bool:
+            # Accept 1/0 or truthy strings
+            sel_mask = sel_series.isin([1, True, '1', 'True', 'true'])
+        else:
+            sel_mask = sel_series
+        any_selected = sel_mask.any()
+
+    # For consistent color scheme with app
+    color_unselected = '#1f77b4'  # matplotlib blue
+    color_selected = '#ff7f0e'    # matplotlib orange
+
+    # Normalize area heights to fit nicely; compute max density observed to scale
+    max_dens = 1e-9
+    precomputed = {}
+    for col in numeric_cols:
+        values_all = pd.to_numeric(df[col], errors='coerce').dropna().values
+        if values_all.size == 0:
+            dens_all = np.zeros_like(x)
+        else:
+            dens_all = smooth_hist(values_all)
+        max_dens = max(max_dens, float(dens_all.max()))
+
+        if has_selection and any_selected:
+            if sel_series.dtype != bool:
+                sel_mask = df['selection'].isin([1, True, '1', 'True', 'true'])
+            else:
+                sel_mask = df['selection']
+            values_sel = pd.to_numeric(df.loc[sel_mask, col], errors='coerce').dropna().values
+            values_uns = pd.to_numeric(df.loc[~sel_mask, col], errors='coerce').dropna().values
+            dens_sel = smooth_hist(values_sel) if values_sel.size > 0 else np.zeros_like(x)
+            dens_uns = smooth_hist(values_uns) if values_uns.size > 0 else np.zeros_like(x)
+            max_dens = max(max_dens, float(dens_sel.max()), float(dens_uns.max()))
+            precomputed[col] = (dens_all, dens_sel, dens_uns)
+        else:
+            precomputed[col] = (dens_all, None, None)
+
+    # Plot each ridge
+    for idx, col in enumerate(numeric_cols):
+        y0 = y_positions[idx]
+        dens_all, dens_sel, dens_uns = precomputed[col]
+        scale = vscale / max_dens if max_dens > 0 else vscale
+
+        # Base (all data) outline in light gray for context
+        ax.plot(x, y0 + dens_all * scale, color='#bbbbbb', lw=1.0, alpha=0.7, zorder=1)
+
+        if has_selection and any_selected and dens_sel is not None and dens_uns is not None:
+            # Unselected fill
+            ax.fill_between(x, y0, y0 + dens_uns * scale, color=color_unselected, alpha=0.55, linewidth=0, zorder=2)
+            ax.plot(x, y0 + dens_uns * scale, color=color_unselected, lw=1.0, alpha=0.9, zorder=3)
+            # Selected fill on top
+            ax.fill_between(x, y0, y0 + dens_sel * scale, color=color_selected, alpha=0.55, linewidth=0, zorder=4)
+            ax.plot(x, y0 + dens_sel * scale, color=color_selected, lw=1.0, alpha=0.9, zorder=5)
+        else:
+            # Single fill for all data
+            ax.fill_between(x, y0, y0 + dens_all * scale, color=color_unselected, alpha=0.6, linewidth=0, zorder=2)
+            ax.plot(x, y0 + dens_all * scale, color=color_unselected, lw=1.0, alpha=0.9, zorder=3)
+
+    # Labels and aesthetics
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels(numeric_cols, fontsize=9)
+    ax.set_xlim(global_min, global_max)
+    ax.set_xlabel('Value')
+    ax.set_title('Ridgeplot of Numeric Columns' + (' (Orange: Selected, Blue: Unselected)' if has_selection and any_selected else ''))
+    ax.grid(axis='x', alpha=0.2)
+
+    # Tidy layout
+    plt.tight_layout()
+
+    # Save to buffer
+    buf = BytesIO()
+    plt.savefig(buf, format='PNG', dpi=100, bbox_inches='tight')
+    plt.close(fig)
+    buf.seek(0)
+    return buf.read()

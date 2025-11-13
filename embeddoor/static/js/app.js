@@ -43,6 +43,7 @@ class FloatingPanel {
                     <option value="heatmap-embedding" ${this.type === 'heatmap-embedding' ? 'selected' : ''}>Heatmap (Embedding)</option>
                     <option value="heatmap-columns" ${this.type === 'heatmap-columns' ? 'selected' : ''}>Heatmap (Columns)</option>
                     <option value="correlation" ${this.type === 'correlation' ? 'selected' : ''}>Pairwise Correlation</option>
+                    <option value="ridgeplot" ${this.type === 'ridgeplot' ? 'selected' : ''}>Ridgeplot (Numeric Columns)</option>
                     <option value="terminal" ${this.type === 'terminal' ? 'selected' : ''}>IPython Terminal</option>
                 </select>
                 <button class="panel-btn" data-action="minimize" title="Minimize">−</button>
@@ -172,7 +173,7 @@ class FloatingPanel {
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
                 // Redraw heatmap/correlation only after resizing is finished
-                if (['heatmap-embedding', 'heatmap-columns', 'correlation'].includes(this.type)) {
+                if (['heatmap-embedding', 'heatmap-columns', 'correlation', 'ridgeplot'].includes(this.type)) {
                     this.updateContent();
                 }
         };
@@ -196,6 +197,7 @@ class FloatingPanel {
             'images': 'Images',
             'heatmap-embedding': 'Heatmap (Embedding)',
             'heatmap-columns': 'Heatmap (Columns)',
+            'ridgeplot': 'Ridgeplot (Numeric Columns)',
             'terminal': 'IPython Terminal'
         };
         
@@ -237,6 +239,9 @@ class FloatingPanel {
                     break;
                 case 'correlation':
                     await this.renderCorrelation(body);
+                    break;
+                case 'ridgeplot':
+                    await this.renderRidgeplot(body);
                     break;
                 case 'terminal':
                     await this.renderTerminal(body);
@@ -781,6 +786,57 @@ class FloatingPanel {
         }
     }
 
+    async renderRidgeplot(body) {
+        body.innerHTML = `
+            <div style="padding: 8px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button class="panel-btn" style="color: #2779cb;" onclick="window.app.getPanel('${this.id}').updateRidgeplot()">Update</button>
+                    <span style="font-size: 12px; color: #666;">Ridgeplot of all numeric columns. If a selection exists, orange = selected, blue = unselected.</span>
+                </div>
+            </div>
+            <div class="ridgeplot-container" style="width: 100%; height: calc(100% - 45px);"></div>
+        `;
+
+        await this.updateRidgeplot();
+    }
+
+    async updateRidgeplot() {
+        const body = this.element.querySelector('.panel-body');
+        const container = body.querySelector('.ridgeplot-container');
+
+        container.innerHTML = '<p class="placeholder">Generating ridgeplot...</p>';
+
+        try {
+            const response = await fetch('/api/view/ridgeplot/numeric', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    width: container.clientWidth || 800,
+                    height: container.clientHeight || 600,
+                    bins: 200,
+                    overlap: 0.75
+                })
+            });
+
+            if (response.ok) {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('image')) {
+                    const blob = await response.blob();
+                    const imageUrl = URL.createObjectURL(blob);
+                    container.innerHTML = `<img src="${imageUrl}" style="width: 100%; height: 100%; object-fit: contain;" />`;
+                } else {
+                    const error = await response.json();
+                    container.innerHTML = `<p class="placeholder">Error: ${error.error || 'Unknown error'}</p>`;
+                }
+            } else {
+                const error = await response.json();
+                container.innerHTML = `<p class="placeholder">Error: ${error.error}</p>`;
+            }
+        } catch (error) {
+            container.innerHTML = `<p class="placeholder">Error: ${error.message}</p>`;
+        }
+    }
+
     async renderCorrelation(body) {
         // Initialize correlation method if not set
         if (!this.config.correlationMethod) {
@@ -1223,6 +1279,7 @@ class EmbeddoorApp {
             'heatmap-embedding': 'Heatmap (Embedding)',
             'heatmap-columns': 'Heatmap (Columns)',
             'correlation': 'Pairwise Correlation',
+            'ridgeplot': 'Ridgeplot (Numeric Columns)',
             'terminal': 'IPython Terminal'
         };
 
