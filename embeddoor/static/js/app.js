@@ -1603,14 +1603,37 @@ class EmbeddoorApp {
         }
         
         const select = document.getElementById('embed-source-column');
-        select.innerHTML = '';
-        this.dataInfo.columns.forEach(col => {
-            const option = document.createElement('option');
-            option.value = col;
-            option.textContent = col;
-            select.appendChild(option);
-        });
+        const providerSelect = document.getElementById('embed-provider');
         
+        // Helper to populate columns based on provider
+        const populateColumns = () => {
+            select.innerHTML = '';
+            let filterFn = () => true;  // Default: all columns
+            
+            if (providerSelect.value === 'clip') {
+                // Only show image columns for CLIP
+                const dtypes = this.dataInfo.dtypes || {};
+                filterFn = col => {
+                    const dt = (dtypes[col] || '').toLowerCase();
+                    const colName = col.toLowerCase();
+                    return dt.includes('image') || colName.includes('img') || colName.includes('image');
+                };
+            }
+            
+            this.dataInfo.columns.filter(filterFn).forEach(col => {
+                const option = document.createElement('option');
+                option.value = col;
+                option.textContent = col;
+                select.appendChild(option);
+            });
+        };
+
+        // Initial population
+        populateColumns();
+
+        // Update columns when provider changes
+        providerSelect.addEventListener('change', populateColumns);
+
         this.showModal('embedding-dialog');
     }
 

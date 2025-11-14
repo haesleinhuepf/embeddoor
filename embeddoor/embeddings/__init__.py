@@ -61,6 +61,19 @@ _PROVIDERS: Dict[str, type] = {
     'dummy': DummyEmbedding,
 }
 
+# Lazy import CLIP provider to avoid import errors if transformers not installed
+def _get_clip_provider():
+    try:
+        from .providers.clip_provider import CLIPImageEmbedder
+        return CLIPImageEmbedder
+    except ImportError:
+        return None
+
+# Register CLIP if available
+_clip = _get_clip_provider()
+if _clip:
+    _PROVIDERS['clip'] = _clip
+
 
 def register_provider(name: str, provider_class: type):
     """Register a new embedding provider."""

@@ -184,11 +184,11 @@ def register_routes(app):
             return jsonify({'success': False, 'error': 'No data loaded'}), 404
         
         # Get source data
-        texts = app.data_manager.df[source_column].tolist()
+        data = app.data_manager.df[source_column].tolist()
         
         # Create embeddings
         try:
-            embeddings = create_embeddings(texts, provider_name, model_name)
+            embeddings = create_embeddings(data, provider_name, model_name)
             result = app.data_manager.add_embedding_column(target_column, embeddings)
             return jsonify(result)
         except Exception as e:
