@@ -225,6 +225,7 @@ def create_plot(
                 yaxis=dict(autorange=True),
                 zaxis=dict(autorange=True),
             ),
+            margin=dict(l=0, r=0, t=0, b=0),
             height=700,
             hovermode='closest'
         )
@@ -787,7 +788,7 @@ def create_heatmap_embedding(df: pd.DataFrame, embedding_column: str) -> str:
         hovermode='closest',
         xaxis=dict(autorange=True),
         yaxis=dict(autorange='reversed'),
-        margin=dict(l=80, r=40, t=40, b=60),
+        margin=dict(l=0, r=0, t=20, b=0),
         autosize=True
     )
 
