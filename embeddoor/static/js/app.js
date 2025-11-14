@@ -1262,14 +1262,27 @@ class EmbeddoorApp {
         document.getElementById('embedding-dialog-cancel').addEventListener('click', () => this.hideModal('embedding-dialog'));
 
         // Dimensionality reduction menu
-        document.getElementById('apply-pca').addEventListener('click', () => this.showDimRedDialog('pca'));
-        document.getElementById('apply-tsne').addEventListener('click', () => this.showDimRedDialog('tsne'));
-        document.getElementById('apply-umap').addEventListener('click', () => this.showDimRedDialog('umap'));
-        document.getElementById('dimred-form').addEventListener('submit', (e) => {
+        document.getElementById('apply-pca').addEventListener('click', () => this.showPCADialog());
+        document.getElementById('apply-tsne').addEventListener('click', () => this.showTSNEDialog());
+        document.getElementById('apply-umap').addEventListener('click', () => this.showUMAPDialog());
+        
+        document.getElementById('pca-form').addEventListener('submit', (e) => {
             e.preventDefault();
-            this.applyDimRed();
+            this.applyPCA();
         });
-        document.getElementById('dimred-dialog-cancel').addEventListener('click', () => this.hideModal('dimred-dialog'));
+        document.getElementById('pca-dialog-cancel').addEventListener('click', () => this.hideModal('pca-dialog'));
+        
+        document.getElementById('tsne-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.applyTSNE();
+        });
+        document.getElementById('tsne-dialog-cancel').addEventListener('click', () => this.hideModal('tsne-dialog'));
+        
+        document.getElementById('umap-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.applyUMAP();
+        });
+        document.getElementById('umap-dialog-cancel').addEventListener('click', () => this.hideModal('umap-dialog'));
 
         // Selection menu
         document.getElementById('store-selection').addEventListener('click', () => this.showStoreSelectionDialog());
@@ -1638,13 +1651,13 @@ class EmbeddoorApp {
         }
     }
 
-    showDimRedDialog(method) {
+    showPCADialog() {
         if (!this.dataInfo || !this.dataInfo.loaded) {
             alert('Please load data first');
             return;
         }
         
-        const select = document.getElementById('dimred-source-column');
+        const select = document.getElementById('pca-source-column');
         select.innerHTML = '';
         this.dataInfo.columns.forEach(col => {
             const option = document.createElement('option');
@@ -1653,18 +1666,16 @@ class EmbeddoorApp {
             select.appendChild(option);
         });
         
-        document.getElementById('dimred-method').value = method;
-        this.showModal('dimred-dialog');
+        this.showModal('pca-dialog');
     }
 
-    async applyDimRed() {
-        const sourceColumn = document.getElementById('dimred-source-column').value;
-        const method = document.getElementById('dimred-method').value;
-        const nComponents = parseInt(document.getElementById('dimred-components').value);
-        const targetName = document.getElementById('dimred-target-name').value;
+    async applyPCA() {
+        const sourceColumn = document.getElementById('pca-source-column').value;
+        const nComponents = parseInt(document.getElementById('pca-components').value);
+        const targetName = document.getElementById('pca-target-name').value;
         
-        this.setStatus('Applying dimensionality reduction...');
-        this.hideModal('dimred-dialog');
+        this.setStatus('Applying PCA...');
+        this.hideModal('pca-dialog');
         
         try {
             const response = await fetch('/api/dimred/apply', {
@@ -1672,7 +1683,7 @@ class EmbeddoorApp {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     source_column: sourceColumn,
-                    method: method,
+                    method: 'pca',
                     n_components: nComponents,
                     target_base_name: targetName,
                     params: {}
@@ -1682,16 +1693,142 @@ class EmbeddoorApp {
             const result = await response.json();
             
             if (result.success) {
-                this.setStatus('Dimensionality reduction applied successfully');
+                this.setStatus('PCA applied successfully');
                 await this.checkDataStatus();
                 this.refreshAll();
             } else {
-                alert('Error applying dimensionality reduction: ' + result.error);
+                alert('Error applying PCA: ' + result.error);
                 this.setStatus('Error');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Error applying dimensionality reduction: ' + error.message);
+            alert('Error applying PCA: ' + error.message);
+            this.setStatus('Error');
+        }
+    }
+
+    showTSNEDialog() {
+        if (!this.dataInfo || !this.dataInfo.loaded) {
+            alert('Please load data first');
+            return;
+        }
+        
+        const select = document.getElementById('tsne-source-column');
+        select.innerHTML = '';
+        this.dataInfo.columns.forEach(col => {
+            const option = document.createElement('option');
+            option.value = col;
+            option.textContent = col;
+            select.appendChild(option);
+        });
+        
+        this.showModal('tsne-dialog');
+    }
+
+    async applyTSNE() {
+        const sourceColumn = document.getElementById('tsne-source-column').value;
+        const nComponents = parseInt(document.getElementById('tsne-components').value);
+        const perplexity = parseFloat(document.getElementById('tsne-perplexity').value);
+        const learningRate = parseFloat(document.getElementById('tsne-learning-rate').value);
+        const maxIter = parseInt(document.getElementById('tsne-max-iter').value);
+        const targetName = document.getElementById('tsne-target-name').value;
+        
+        this.setStatus('Applying t-SNE...');
+        this.hideModal('tsne-dialog');
+        
+        try {
+            const response = await fetch('/api/dimred/apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    source_column: sourceColumn,
+                    method: 'tsne',
+                    n_components: nComponents,
+                    target_base_name: targetName,
+                    params: {
+                        perplexity: perplexity,
+                        learning_rate: learningRate,
+                        max_iter: maxIter
+                    }
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.setStatus('t-SNE applied successfully');
+                await this.checkDataStatus();
+                this.refreshAll();
+            } else {
+                alert('Error applying t-SNE: ' + result.error);
+                this.setStatus('Error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error applying t-SNE: ' + error.message);
+            this.setStatus('Error');
+        }
+    }
+
+    showUMAPDialog() {
+        if (!this.dataInfo || !this.dataInfo.loaded) {
+            alert('Please load data first');
+            return;
+        }
+        
+        const select = document.getElementById('umap-source-column');
+        select.innerHTML = '';
+        this.dataInfo.columns.forEach(col => {
+            const option = document.createElement('option');
+            option.value = col;
+            option.textContent = col;
+            select.appendChild(option);
+        });
+        
+        this.showModal('umap-dialog');
+    }
+
+    async applyUMAP() {
+        const sourceColumn = document.getElementById('umap-source-column').value;
+        const nComponents = parseInt(document.getElementById('umap-components').value);
+        const nNeighbors = parseInt(document.getElementById('umap-n-neighbors').value);
+        const minDist = parseFloat(document.getElementById('umap-min-dist').value);
+        const metric = document.getElementById('umap-metric').value;
+        const targetName = document.getElementById('umap-target-name').value;
+        
+        this.setStatus('Applying UMAP...');
+        this.hideModal('umap-dialog');
+        
+        try {
+            const response = await fetch('/api/dimred/apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    source_column: sourceColumn,
+                    method: 'umap',
+                    n_components: nComponents,
+                    target_base_name: targetName,
+                    params: {
+                        n_neighbors: nNeighbors,
+                        min_dist: minDist,
+                        metric: metric
+                    }
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.setStatus('UMAP applied successfully');
+                await this.checkDataStatus();
+                this.refreshAll();
+            } else {
+                alert('Error applying UMAP: ' + result.error);
+                this.setStatus('Error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error applying UMAP: ' + error.message);
             this.setStatus('Error');
         }
     }

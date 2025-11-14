@@ -120,23 +120,61 @@
         </div>
     </div>
 
-    <div id="dimred-dialog" class="modal">
+    <div id="pca-dialog" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <h2>Apply Dimensionality Reduction</h2>
-            <form id="dimred-form">
-                <label>Source Column (Embeddings): <select id="dimred-source-column"></select></label>
-                <label>Method: <select id="dimred-method">
-                    <option value="pca">PCA</option>
-                    <option value="tsne">t-SNE</option>
-                    <option value="umap">UMAP</option>
-                </select></label>
-                <label>Number of Components: <input type="number" id="dimred-components" value="2" min="1" max="10"></label>
-                <label>Target Column Base Name: <input type="text" id="dimred-target-name" value="dimred"></label>
-                <div id="dimred-params"></div>
+            <h2>Apply PCA</h2>
+            <form id="pca-form">
+                <label>Source Column (Embeddings): <select id="pca-source-column"></select></label>
+                <label>Number of Components: <input type="number" id="pca-components" value="2" min="1" max="10"></label>
+                <label>Target Column Base Name: <input type="text" id="pca-target-name" value="pca"></label>
                 <div class="modal-buttons">
                     <button type="submit">Apply</button>
-                    <button type="button" id="dimred-dialog-cancel">Cancel</button>
+                    <button type="button" id="pca-dialog-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="tsne-dialog" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Apply t-SNE</h2>
+            <form id="tsne-form">
+                <label>Source Column (Embeddings): <select id="tsne-source-column"></select></label>
+                <label>Number of Components: <input type="number" id="tsne-components" value="2" min="1" max="3"></label>
+                <label>Perplexity: <input type="number" id="tsne-perplexity" value="30" min="5" max="50" step="1"></label>
+                <label>Learning Rate: <input type="number" id="tsne-learning-rate" value="200" min="10" max="1000" step="10"></label>
+                <label>Max Iterations: <input type="number" id="tsne-max-iter" value="1000" min="250" max="5000" step="50"></label>
+                <label>Target Column Base Name: <input type="text" id="tsne-target-name" value="tsne"></label>
+                <div class="modal-buttons">
+                    <button type="submit">Apply</button>
+                    <button type="button" id="tsne-dialog-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="umap-dialog" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Apply UMAP</h2>
+            <form id="umap-form">
+                <label>Source Column (Embeddings): <select id="umap-source-column"></select></label>
+                <label>Number of Components: <input type="number" id="umap-components" value="2" min="1" max="10"></label>
+                <label>Number of Neighbors: <input type="number" id="umap-n-neighbors" value="15" min="2" max="200" step="1"></label>
+                <label>Min Distance: <input type="number" id="umap-min-dist" value="0.1" min="0" max="0.99" step="0.01"></label>
+                <label>Metric: <select id="umap-metric">
+                    <option value="euclidean">Euclidean</option>
+                    <option value="cosine">Cosine</option>
+                    <option value="manhattan">Manhattan</option>
+                    <option value="chebyshev">Chebyshev</option>
+                    <option value="minkowski">Minkowski</option>
+                </select></label>
+                <label>Target Column Base Name: <input type="text" id="umap-target-name" value="umap"></label>
+                <div class="modal-buttons">
+                    <button type="submit">Apply</button>
+                    <button type="button" id="umap-dialog-cancel">Cancel</button>
                 </div>
             </form>
         </div>

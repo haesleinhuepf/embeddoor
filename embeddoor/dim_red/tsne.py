@@ -39,12 +39,12 @@ class TSNEMethod(DimRedMethod):
                     'max': 1000.0,
                     'description': 'Learning rate for optimization (typical: 10-1000)'
                 },
-                'n_iter': {
+                'max_iter': {
                     'type': 'int',
                     'default': 1000,
                     'min': 250,
                     'max': 5000,
-                    'description': 'Number of iterations for optimization'
+                    'description': 'Maximum number of iterations for optimization'
                 }
             }
         }
@@ -63,7 +63,7 @@ class TSNEMethod(DimRedMethod):
             n_components: Number of dimensions (default: 2, max: 3)
             perplexity: Balance between local and global structure (default: 30.0)
             learning_rate: Learning rate for optimization (default: 200.0)
-            n_iter: Number of optimization iterations (default: 1000)
+            max_iter: Maximum number of optimization iterations (default: 1000)
             **kwargs: Additional parameters
         
         Returns:
@@ -78,7 +78,7 @@ class TSNEMethod(DimRedMethod):
         # Extract parameters with defaults
         perplexity = kwargs.get('perplexity', 30.0)
         learning_rate = kwargs.get('learning_rate', 200.0)
-        n_iter = kwargs.get('n_iter', 1000)
+        max_iter = kwargs.get('max_iter', 1000)
         
         # Validate perplexity based on sample size
         max_perplexity = (X.shape[0] - 1) / 3.0
@@ -90,7 +90,7 @@ class TSNEMethod(DimRedMethod):
             n_components=n_components,
             perplexity=perplexity,
             learning_rate=learning_rate,
-            n_iter=n_iter,
+            max_iter=max_iter,
             random_state=42
         )
         reduced = tsne.fit_transform(X)
