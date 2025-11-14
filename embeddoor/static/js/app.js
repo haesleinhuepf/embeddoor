@@ -1141,6 +1141,9 @@ class FloatingPanel {
             // Increment prompt number
             promptNum.textContent = parseInt(currentPrompt) + 1;
 
+            // Refresh all other panels after executing terminal command
+            window.app.refreshOtherPanels(this.id);
+
         } catch (error) {
             this.appendTerminalOutput(`Error: ${error.message}`, 'error');
         }
