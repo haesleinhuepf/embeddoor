@@ -61,10 +61,23 @@
                 <div class="icon">💾</div>
                 <div class="label">Save</div>
             </button>
-            <button class="toolbar-btn" id="btn-add-panel" title="Add Panel">
-                <div class="icon">➕</div>
-                <div class="label">Add Panel</div>
-            </button>
+            <div class="toolbar-btn-container">
+                <button class="toolbar-btn" id="btn-add-panel" title="Add Panel">
+                    <div class="icon">➕</div>
+                    <div class="label">Add Panel</div>
+                </button>
+                <div id="add-panel-popup" class="panel-type-popup">
+                    <a href="#" data-panel-type="plot">Plot</a>
+                    <a href="#" data-panel-type="table">Table</a>
+                    <a href="#" data-panel-type="wordcloud">Word Cloud</a>
+                    <a href="#" data-panel-type="images">Images</a>
+                    <a href="#" data-panel-type="heatmap-embedding">Heatmap (Embedding)</a>
+                    <a href="#" data-panel-type="heatmap-columns">Heatmap (Columns)</a>
+                    <a href="#" data-panel-type="correlation">Pairwise Correlation</a>
+                    <a href="#" data-panel-type="ridgeplot">Ridgeplot (Numeric Columns)</a>
+                    <a href="#" data-panel-type="terminal">IPython Terminal</a>
+                </div>
+            </div>
             <button class="toolbar-btn" id="btn-refresh" title="Refresh View">
                 <div class="icon">🔄</div>
                 <div class="label">Refresh</div>

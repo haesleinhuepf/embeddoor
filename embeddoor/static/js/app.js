@@ -1284,9 +1284,32 @@ class EmbeddoorApp {
 
         // View menu
         document.getElementById('add-panel').addEventListener('click', () => this.showAddPanelDialog());
-        document.getElementById('btn-add-panel').addEventListener('click', () => this.showAddPanelDialog());
+        document.getElementById('btn-add-panel').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleAddPanelPopup();
+        });
 
-        // Add panel dialog
+        // Add panel popup menu items
+        document.querySelectorAll('#add-panel-popup a').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const panelType = e.target.getAttribute('data-panel-type');
+                this.addPanelFromPopup(panelType);
+                this.hideAddPanelPopup();
+            });
+        });
+
+        // Close popup when clicking outside
+        document.addEventListener('click', (e) => {
+            const popup = document.getElementById('add-panel-popup');
+            const btn = document.getElementById('btn-add-panel');
+            if (popup.classList.contains('show') && !popup.contains(e.target) && !btn.contains(e.target)) {
+                this.hideAddPanelPopup();
+            }
+        });
+
+        // Add panel dialog (keep for menu bar compatibility)
         document.getElementById('add-panel-form').addEventListener('submit', (e) => {
             e.preventDefault();
             this.addPanelFromDialog();
@@ -1330,6 +1353,34 @@ class EmbeddoorApp {
 
     hideModal(modalId) {
         document.getElementById(modalId).style.display = 'none';
+    }
+
+    toggleAddPanelPopup() {
+        const popup = document.getElementById('add-panel-popup');
+        popup.classList.toggle('show');
+    }
+
+    hideAddPanelPopup() {
+        const popup = document.getElementById('add-panel-popup');
+        popup.classList.remove('show');
+    }
+
+    addPanelFromPopup(type) {
+        const typeNames = {
+            'plot': 'Plot',
+            'table': 'Table',
+            'wordcloud': 'Word Cloud',
+            'images': 'Images',
+            'heatmap-embedding': 'Heatmap (Embedding)',
+            'heatmap-columns': 'Heatmap (Columns)',
+            'correlation': 'Pairwise Correlation',
+            'ridgeplot': 'Ridgeplot (Numeric Columns)',
+            'terminal': 'IPython Terminal'
+        };
+
+        // Offset new panels slightly
+        const offset = (this.panels.length * 30) % 200;
+        this.addPanel(type, typeNames[type], 20 + offset, 20 + offset, 600, 500);
     }
 
     showAddPanelDialog() {
