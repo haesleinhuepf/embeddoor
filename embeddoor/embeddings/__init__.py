@@ -57,11 +57,9 @@ class DummyEmbedding(EmbeddingProvider):
 
 
 # Registry of available providers
-_PROVIDERS: Dict[str, type] = {
-    'dummy': DummyEmbedding,
-}
+_PROVIDERS: Dict[str, type] = {}
 
-# Lazy import CLIP provider to avoid import errors if transformers not installed
+# Lazy import providers to avoid import errors if dependencies not installed
 def _get_clip_provider():
     try:
         from .providers.clip_provider import CLIPImageEmbedder
@@ -69,10 +67,34 @@ def _get_clip_provider():
     except ImportError:
         return None
 
+def _get_openai_provider():
+    try:
+        from .providers.openai_provider import OpenAIEmbedding
+        return OpenAIEmbedding
+    except ImportError:
+        return None
+
+def _get_huggingface_provider():
+    try:
+        from .providers.huggingface import HuggingFaceEmbedding
+        return HuggingFaceEmbedding
+    except ImportError:
+        return None
+
 # Register CLIP if available
 _clip = _get_clip_provider()
 if _clip:
     _PROVIDERS['clip'] = _clip
+
+# Register OpenAI if available
+_openai = _get_openai_provider()
+if _openai:
+    _PROVIDERS['openai'] = _openai
+
+# Register HuggingFace if available
+_huggingface = _get_huggingface_provider()
+if _huggingface:
+    _PROVIDERS['huggingface'] = _huggingface
 
 
 def register_provider(name: str, provider_class: type):

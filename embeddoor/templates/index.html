@@ -108,10 +108,11 @@
             <form id="embedding-form">
                 <label>Source Column: <select id="embed-source-column"></select></label>
                 <label>Provider: <select id="embed-provider">
-                    <option value="dummy">Dummy (for testing)</option>
+                    <option value="openai">OpenAI (text embedding)</option>
+                    <option value="huggingface">HuggingFace (text embedding)</option>
                     <option value="clip">CLIP (image embedding)</option>
                 </select></label>
-                <label>Model: <input type="text" id="embed-model" value="default"></label>
+                <label>Model: <input type="text" id="embed-model" value="default" placeholder="default or model name"></label>
                 <label>Target Column Name: <input type="text" id="embed-target-column" value="embedding"></label>
                 <div class="modal-buttons">
                     <button type="submit">Create</button>

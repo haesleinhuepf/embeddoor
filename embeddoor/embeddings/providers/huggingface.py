@@ -10,6 +10,8 @@ class HuggingFaceEmbedding(EmbeddingProvider):
     """Embedding provider using HuggingFace models."""
     
     def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2", **kwargs):
+        if model_name == "default":
+            model_name = "sentence-transformers/all-MiniLM-L6-v2"
         super().__init__(model_name, **kwargs)
         self.model = None
         self._initialize_model()

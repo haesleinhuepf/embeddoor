@@ -10,6 +10,8 @@ class OpenAIEmbedding(EmbeddingProvider):
     """Embedding provider using OpenAI API."""
     
     def __init__(self, model_name: str = "text-embedding-3-small", api_key: str = None, **kwargs):
+        if model_name == "default":
+            model_name = "text-embedding-3-small"
         super().__init__(model_name, **kwargs)
         self.api_key = api_key
         self.client = None

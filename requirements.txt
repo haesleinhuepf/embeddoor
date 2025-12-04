@@ -14,10 +14,12 @@ requests>=2.31.0
 matplotlib>=3.7.0
 
 # Optional - uncomment if you want to install embedding models
-# For CLIP image embeddings (required):
+# For CLIP image embeddings:
 # transformers>=4.30.0
 # torch>=2.0.0
-# For text embeddings:
+# For HuggingFace text embeddings:
 # sentence-transformers>=2.2.2
+# For OpenAI text embeddings (requires API key):
 # openai>=1.0.0
+# For Gemini text embeddings (requires API key):
 # google-generativeai>=0.3.0

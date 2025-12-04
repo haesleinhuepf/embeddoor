@@ -1604,6 +1604,7 @@ class EmbeddoorApp {
         
         const select = document.getElementById('embed-source-column');
         const providerSelect = document.getElementById('embed-provider');
+        const modelInput = document.getElementById('embed-model');
         
         // Helper to populate columns based on provider
         const populateColumns = () => {
@@ -1618,21 +1619,58 @@ class EmbeddoorApp {
                     const colName = col.toLowerCase();
                     return dt.includes('image') || colName.includes('img') || colName.includes('image');
                 };
+            } else {
+                // For text embeddings (OpenAI, HuggingFace), show text columns
+                const dtypes = this.dataInfo.dtypes || {};
+                filterFn = col => {
+                    const dt = (dtypes[col] || '').toLowerCase();
+                    // Show object/string columns for text embeddings
+                    return dt.includes('object') || dt.includes('string') || dt.includes('category');
+                };
             }
             
-            this.dataInfo.columns.filter(filterFn).forEach(col => {
-                const option = document.createElement('option');
-                option.value = col;
-                option.textContent = col;
-                select.appendChild(option);
-            });
+            const filteredCols = this.dataInfo.columns.filter(filterFn);
+            if (filteredCols.length === 0) {
+                // If no matching columns, show all columns
+                this.dataInfo.columns.forEach(col => {
+                    const option = document.createElement('option');
+                    option.value = col;
+                    option.textContent = col;
+                    select.appendChild(option);
+                });
+            } else {
+                filteredCols.forEach(col => {
+                    const option = document.createElement('option');
+                    option.value = col;
+                    option.textContent = col;
+                    select.appendChild(option);
+                });
+            }
+        };
+        
+        // Update model placeholder based on provider
+        const updateModelPlaceholder = () => {
+            if (providerSelect.value === 'openai') {
+                modelInput.placeholder = 'text-embedding-3-small';
+                modelInput.value = 'default';
+            } else if (providerSelect.value === 'huggingface') {
+                modelInput.placeholder = 'sentence-transformers/all-MiniLM-L6-v2';
+                modelInput.value = 'default';
+            } else if (providerSelect.value === 'clip') {
+                modelInput.placeholder = 'openai/clip-vit-base-patch32';
+                modelInput.value = 'default';
+            }
         };
 
         // Initial population
         populateColumns();
+        updateModelPlaceholder();
 
-        // Update columns when provider changes
-        providerSelect.addEventListener('change', populateColumns);
+        // Update columns and model placeholder when provider changes
+        providerSelect.addEventListener('change', () => {
+            populateColumns();
+            updateModelPlaceholder();
+        });
 
         this.showModal('embedding-dialog');
     }
