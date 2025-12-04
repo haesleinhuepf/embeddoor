@@ -18,18 +18,6 @@ A browser-based tool for embedding visualization and analysis.
 
 ## Installation
 
-### Basic Installation
-
-```bash
-pip install embeddoor
-```
-
-### With Embedding Support
-
-```bash
-pip install embeddoor[embeddings]
-```
-
 ### Development Installation
 
 ```bash
