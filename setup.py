@@ -8,12 +8,12 @@ with open("README.md", "r", encoding="utf-8") as fh:
 setup(
     name="embeddoor",
     version="0.1.0",
-    author="Your Name",
-    author_email="your.email@example.com",
+    author="Robert Haase",
+    author_email="robert.haase@uni-leipzig.de",
     description="A browser-based embedding visualization and analysis tool",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/embeddoor",
+    url="https://github.com/haesleinhuepf/embeddoor",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 3 - Alpha",
