@@ -46,27 +46,6 @@ This will start the server and open your default browser to `http://localhost:50
 6. **Reduce Dimensions**: Dimensionality Reduction → Apply PCA/t-SNE/UMAP to embeddings
 7. **Save**: File → Save to export data as Parquet
 
-## Extending Embeddoor
-
-### Adding Custom Embedding Models
-
-Create a new embedding provider in `embeddoor/embeddings/providers/`:
-
-```python
-from embeddoor.embeddings.base import EmbeddingProvider
-
-class CustomEmbedding(EmbeddingProvider):
-    def __init__(self, model_name, **kwargs):
-        super().__init__(model_name, **kwargs)
-        # Initialize your model
-    
-    def embed(self, texts):
-        # Return list of embeddings (numpy arrays)
-        pass
-```
-
-Register your provider in `embeddoor/embeddings/__init__.py`.
-
 ## License
 
 MIT License
