@@ -21,7 +21,7 @@ A browser-based tool for embedding visualization and analysis.
 ### Development Installation
 
 ```bash
-git clone https://github.com/yourusername/embeddoor.git
+git clone https://github.com/haesleinhuepf/embeddoor.git
 cd embeddoor
 pip install -e .[dev,embeddings]
 ```
