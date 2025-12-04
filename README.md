@@ -2,6 +2,8 @@
 
 A browser-based tool for embedding visualization and analysis.
 
+![](docs/images/embeddoor-teaser.gif)
+
 ![](logo.png)
 
 ## Features
@@ -54,9 +56,10 @@ This will start the server and open your default browser to `http://localhost:50
 
 MIT License
 
-## Note
+## Notes
 
-Most of the code in this repository was vibe-coded using Github copilot integration in Visual Studio Code. When modifying code here, consider using a similar tool. 
+* embeddor is in early development. Be careful when using it, check its visualisations and expect changes with every new version.
+* Most of the code in this repository was vibe-coded using Github copilot integration in Visual Studio Code. When modifying code here, consider using a similar tool. 
 
 ## Contributing
 
