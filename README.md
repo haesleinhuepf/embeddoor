@@ -18,6 +18,10 @@ A browser-based tool for embedding visualization and analysis.
 
 ## Installation
 
+```bash
+pip install embeddor
+```
+
 ### Development Installation
 
 ```bash
@@ -49,6 +53,10 @@ This will start the server and open your default browser to `http://localhost:50
 ## License
 
 MIT License
+
+## Note
+
+Most of the code in this repository was vibe-coded using Github copilot integration in Visual Studio Code. When modifying code here, consider using a similar tool. 
 
 ## Contributing
 
