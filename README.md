@@ -21,7 +21,7 @@ A browser-based tool for embedding visualization and analysis.
 ## Installation
 
 ```bash
-pip install embeddor
+pip install embeddoor
 ```
 
 ### Development Installation
